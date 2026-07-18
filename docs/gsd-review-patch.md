@@ -44,17 +44,26 @@ This makes the model configurable via `review.models.grok` in GSD config; unset 
 **Grok (SpaceXAI Grok Build):**
 ```bash
 if [ -n "$GROK_MODEL" ] && [ "$GROK_MODEL" != "null" ]; then
-  grok --prompt-file /tmp/gsd-review-prompt-{phase}.md -m "$GROK_MODEL" --yolo --tools "read_file,grep,list_dir" --output-format plain --no-auto-update 2>/dev/null > /tmp/gsd-review-grok-{phase}.md
+  grok --prompt-file /tmp/gsd-review-prompt-{phase}.md -m "$GROK_MODEL" --yolo --tools "read_file,grep,list_dir" --output-format plain --no-auto-update 2>/tmp/gsd-review-grok-{phase}.err > /tmp/gsd-review-grok-{phase}.md
 else
-  grok --prompt-file /tmp/gsd-review-prompt-{phase}.md --yolo --tools "read_file,grep,list_dir" --output-format plain --no-auto-update 2>/dev/null > /tmp/gsd-review-grok-{phase}.md
+  grok --prompt-file /tmp/gsd-review-prompt-{phase}.md --yolo --tools "read_file,grep,list_dir" --output-format plain --no-auto-update 2>/tmp/gsd-review-grok-{phase}.err > /tmp/gsd-review-grok-{phase}.md
 fi
 if [ ! -s /tmp/gsd-review-grok-{phase}.md ]; then
-  echo "Grok review failed or returned empty output." > /tmp/gsd-review-grok-{phase}.md
+  {
+    echo "Grok review failed or returned empty output."
+    echo ""
+    echo "stderr (last 20 lines):"
+    tail -20 /tmp/gsd-review-grok-{phase}.err 2>/dev/null
+    echo "If grok is not installed: curl -fsSL https://x.ai/cli/install.sh | bash"
+    echo "If not authenticated: run \`grok\` once interactively to log in."
+  } > /tmp/gsd-review-grok-{phase}.md
 fi
 ```
 ````
 
 The `--tools "read_file,grep,list_dir"` allowlist keeps the review strictly read-only — no shell, no edits.
+
+Stderr goes to a sidecar `.err` log because grok logs diagnostics (including install/auth failures) to stderr — with `2>/dev/null` they vanish silently.
 
 **6. REVIEWS.md template** — add `grok` to the reviewers list in the output frontmatter:
 
