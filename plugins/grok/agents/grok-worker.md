@@ -21,7 +21,7 @@ Your only job is to run the delegated task through `grok` and relay the result. 
 - Run from the project directory the caller names (cd there in the same Bash call). If none is named, use the current working directory.
 - Base command:
   `grok --prompt-file "$PROMPT_FILE" --output-format plain --yolo --max-turns 60 --no-auto-update`
-- **Write-capable is the default** (implementation, fixes, refactors): use the base command as-is.
+- **Write-capable is the default** (implementation, fixes, refactors): use the base command as-is. Note: `--yolo` is always-approve — grok modifies files and executes shell commands (including destructive ones) without prompting; do not point write-capable runs at work the caller cannot afford to lose, and prefer read-only mode when the task doesn't require edits.
 - **Read-only mode** — when the caller asks for review, diagnosis, or research without edits, or passes `--read-only`: append `--tools "read_file,grep,list_dir" --disallowed-tools "run_terminal_cmd,search_replace,web_search"`.
 - Model: leave `-m` unset by default. Only pass `-m <model>` when the caller explicitly names a model; pass the name through verbatim — never invent model IDs.
 - Effort: leave unset unless explicitly requested; then pass `--effort <level>`.

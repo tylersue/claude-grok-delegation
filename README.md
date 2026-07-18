@@ -76,10 +76,12 @@ Claude Code (main loop)
             └─ Grok's own agentic loop (reads, edits, shell) in your repo
 ```
 
+> **Warning:** write-capable delegation runs grok with `--yolo` — grok's always-approve mode. Grok can create, modify, and delete files and run arbitrary shell commands (including `rm` or `git push`) in the target directory without prompting. Only delegate write-capable tasks in trusted, committed (or backed-up) working trees; use `--read-only` for reviews and diagnosis.
+
 Design principles:
 
 - **The courier is thin.** The subagent forwards the task and relays the result verbatim, attributed. Grok does the reasoning.
-- **Write-capable by default, read-only on request.** Reviews and diagnosis passes run with a read-only tool allowlist.
+- **Write-capable by default, read-only on request.** Reviews and diagnosis passes run with a read-only tool allowlist. Write-capable runs use `--yolo` (always-approve): treat them like handing Grok a shell in your repo.
 - **Never invent model IDs.** The courier only passes `-m` when you explicitly name a model.
 - **Disagreements are surfaced, not resolved silently.** If Grok's take conflicts with Claude's, both positions are presented with attribution.
 
