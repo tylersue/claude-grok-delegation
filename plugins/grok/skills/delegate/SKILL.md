@@ -22,5 +22,5 @@ Route the given task to SpaceXAI's Grok through the `grok-worker` agent (a thin 
 ## Notes
 
 - The courier agent never reasons about the task itself; Grok does the work. Don't pre-solve the task before delegating.
-- Trivial pure-text questions with no repo interaction may skip the agent and run `grok -p "<question>" --output-format plain --max-turns 5` inline.
+- Trivial pure-text questions with no repo interaction may skip the agent, but still go through a prompt file — never inline the question into shell quoting (embedded quotes break argument parsing, and `$()`/backticks execute before grok ever sees the text): `PROMPT_FILE=$(mktemp "${TMPDIR:-/tmp}/grok-task-XXXXXX")`, write the question to it, run `grok --prompt-file "$PROMPT_FILE" --output-format plain --max-turns 5`, then `rm -f "$PROMPT_FILE"`.
 - Pairs naturally with other cross-AI delegation plugins (e.g. OpenAI's codex plugin): for high-stakes changes, get more than one external model's read, then reconcile disagreements explicitly.
