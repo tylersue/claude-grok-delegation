@@ -1,0 +1,21 @@
+{
+  "name": "grok-delegation",
+  "owner": {
+    "name": "Tyler Sue"
+  },
+  "metadata": {
+    "description": "Delegate tasks from Claude Code to xAI's Grok via the grok CLI (Grok Build).",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "grok",
+      "description": "Use Grok from Claude Code for second opinions, reviews, diagnosis passes, and delegated implementation work.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Tyler Sue"
+      },
+      "source": "./plugins/grok"
+    }
+  ]
+}
