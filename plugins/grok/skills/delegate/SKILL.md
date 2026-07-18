@@ -1,11 +1,11 @@
 ---
 name: delegate
-description: Delegate a task to xAI's Grok via the grok CLI (Grok Build) — independent second opinions, plan/diff reviews, diagnosis passes, or parallel implementation work from a non-Claude model family. Use when the user invokes the skill with a task, asks for "Grok's take", or wants a cross-AI second opinion.
+description: Delegate a task to SpaceXAI's Grok via the grok CLI (Grok Build) — independent second opinions, plan/diff reviews, diagnosis passes, or parallel implementation work from a non-Claude model family. Use when the user invokes the skill with a task, asks for "Grok's take", or wants a cross-AI second opinion.
 ---
 
 # Grok CLI Delegation
 
-Route the given task to xAI's Grok through the `grok-worker` agent (a thin courier that drives `grok` headless). Grok runs its own full agentic loop — file reads, edits, terminal commands — inside the target directory.
+Route the given task to SpaceXAI's Grok through the `grok-worker` agent (a thin courier that drives `grok` headless). Grok runs its own full agentic loop — file reads, edits, terminal commands — inside the target directory.
 
 ## Steps
 

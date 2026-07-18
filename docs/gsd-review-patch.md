@@ -21,7 +21,7 @@ command -v grok >/dev/null 2>&1 && echo "grok:available" || echo "grok:missing"
 **2. Flag documentation** — in the reviewer-flag list, add:
 
 ```markdown
-- `--grok` → include Grok (xAI Grok Build)
+- `--grok` → include Grok (SpaceXAI Grok Build)
 ```
 
 **3. Install hints** — in the install-instructions list, add:
@@ -41,7 +41,7 @@ This makes the model configurable via `review.models.grok` in GSD config; unset 
 **5. Invocation block** — with the other reviewer invocation blocks (e.g. before CodeRabbit's), add:
 
 ````markdown
-**Grok (xAI Grok Build):**
+**Grok (SpaceXAI Grok Build):**
 ```bash
 if [ -n "$GROK_MODEL" ] && [ "$GROK_MODEL" != "null" ]; then
   grok --prompt-file /tmp/gsd-review-prompt-{phase}.md -m "$GROK_MODEL" --yolo --tools "read_file,grep,list_dir" --output-format plain --no-auto-update 2>/dev/null > /tmp/gsd-review-grok-{phase}.md

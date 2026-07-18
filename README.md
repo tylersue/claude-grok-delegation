@@ -1,6 +1,6 @@
 # Grok Delegation for Claude Code
 
-Delegate tasks from [Claude Code](https://claude.com/claude-code) to xAI's Grok via the [`grok` CLI (Grok Build)](https://github.com/xai-org/grok-build) — independent second opinions, plan/diff reviews, diagnosis passes, or parallel implementation work from a non-Claude model family.
+Delegate tasks from [Claude Code](https://claude.com/claude-code) to SpaceXAI's Grok via the [`grok` CLI (Grok Build)](https://github.com/xai-org/grok-build) — independent second opinions, plan/diff reviews, diagnosis passes, or parallel implementation work from a non-Claude model family.
 
 ## Why
 

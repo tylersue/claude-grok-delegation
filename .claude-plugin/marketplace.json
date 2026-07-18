@@ -4,7 +4,7 @@
     "name": "Tyler Sue"
   },
   "metadata": {
-    "description": "Delegate tasks from Claude Code to xAI's Grok via the grok CLI (Grok Build).",
+    "description": "Delegate tasks from Claude Code to SpaceXAI's Grok via the grok CLI (Grok Build).",
     "version": "0.1.0"
   },
   "plugins": [

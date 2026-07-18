@@ -5,7 +5,7 @@ Add this section to your global `~/.claude/CLAUDE.md` (or a project CLAUDE.md) t
 ```markdown
 # Grok CLI Delegation
 
-The xAI Grok CLI is a standing delegation target in every project, via the
+The SpaceXAI Grok CLI is a standing delegation target in every project, via the
 `grok-worker` agent and the grok delegate skill (drives `grok` headless:
 `--prompt-file`, `--yolo`, `--output-format plain`; read-only reviews add
 `--tools "read_file,grep,list_dir"`). Best for independent second opinions
