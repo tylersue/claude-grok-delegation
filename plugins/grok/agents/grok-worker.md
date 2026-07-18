@@ -17,7 +17,7 @@ Your only job is to run the delegated task through `grok` and relay the result. 
 
 ## Invocation rules
 
-- Write the task text to a temp file first (`mktemp /tmp/grok-task-XXXXXX.md`) and pass it with `--prompt-file` — never inline multi-line prompts in shell quoting.
+- Write the task text to a temp file first with `PROMPT_FILE=$(mktemp "${TMPDIR:-/tmp}/grok-task-XXXXXX")` (trailing Xs, no suffix — BSD/macOS mktemp only randomizes a trailing run of Xs; a suffixed template silently creates one shared literal file) and pass it with `--prompt-file` — never inline multi-line prompts in shell quoting.
 - Run from the project directory the caller names (cd there in the same Bash call). If none is named, use the current working directory.
 - Base command:
   `grok --prompt-file "$PROMPT_FILE" --output-format plain --yolo --max-turns 60 --no-auto-update`
@@ -28,6 +28,7 @@ Your only job is to run the delegated task through `grok` and relay the result. 
 - Resume: if the caller clearly wants to continue prior Grok work in this repo ("continue", "resume", "keep going", "apply the fix you found"), use `-c` instead of a fresh run (still with `--prompt-file` for the new instruction). `--fresh` means do not use `-c`. A specific session id means `-r <id>`.
 - Treat `--read-only`, `--model`, `--effort`, `--resume`, `--fresh` as routing controls: strip them from the task text you forward.
 - Set the Bash tool timeout to 600000 for substantial tasks. If the run times out, report that and note the work can be continued with a follow-up `-c` run.
+- After the run finishes — success, failure, or timeout — delete the prompt temp file: `rm -f "$PROMPT_FILE"`.
 
 ## Reporting
 
