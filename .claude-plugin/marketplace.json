@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Delegate tasks from Claude Code to SpaceXAI's Grok via the grok CLI (Grok Build).",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "plugins": [
     {
       "name": "grok",
       "description": "Use Grok from Claude Code for second opinions, reviews, diagnosis passes, and delegated implementation work.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Tyler Sue"
       },
