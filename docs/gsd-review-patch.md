@@ -7,6 +7,7 @@
 > - This patches files that GSD owns. **`/gsd:update` may overwrite them — reapply the patch after every GSD update.**
 > - Written against the GSD 1.x layout (`~/.claude/get-shit-done/workflows/`, npm package `get-shit-done-cc`, which resolves reviewer model config through `gsd-sdk`). GSD 2 (`@opengsd/gsd-core`) restructured these files (workflows live under `gsd-core/workflows/` and config resolves through a `gsd_run` shim) — the same seven edits apply conceptually, but the anchor lines differ.
 > - An upstream contribution would be the durable fix; GSD's contribution process is issue-first (see their CONTRIBUTING.md).
+> - The fixed `/tmp/gsd-review-*-{phase}.md` paths (and the shared prompt file) follow GSD's stock reviewer convention across all reviewers; symlink/concurrency hardening of those paths belongs upstream in GSD, not in this patch.
 
 Both files live in your GSD install directory — for a global GSD 1.x install: `~/.claude/get-shit-done/workflows/`.
 
@@ -44,13 +45,15 @@ This makes the model configurable via `review.models.grok` in GSD config; unset 
 **Grok (SpaceXAI Grok Build):**
 ```bash
 if [ -n "$GROK_MODEL" ] && [ "$GROK_MODEL" != "null" ]; then
-  grok --prompt-file /tmp/gsd-review-prompt-{phase}.md -m "$GROK_MODEL" --yolo --tools "read_file,grep,list_dir" --output-format plain --no-auto-update 2>/tmp/gsd-review-grok-{phase}.err > /tmp/gsd-review-grok-{phase}.md
+  grok --prompt-file /tmp/gsd-review-prompt-{phase}.md -m "$GROK_MODEL" --yolo --tools "read_file,grep,list_dir" --disallowed-tools "run_terminal_cmd,search_replace,web_search,search_tool,use_tool" --deny 'MCPTool(*)' --output-format plain --no-auto-update 2>/tmp/gsd-review-grok-{phase}.err > /tmp/gsd-review-grok-{phase}.md
+  GROK_EXIT=$?
 else
-  grok --prompt-file /tmp/gsd-review-prompt-{phase}.md --yolo --tools "read_file,grep,list_dir" --output-format plain --no-auto-update 2>/tmp/gsd-review-grok-{phase}.err > /tmp/gsd-review-grok-{phase}.md
+  grok --prompt-file /tmp/gsd-review-prompt-{phase}.md --yolo --tools "read_file,grep,list_dir" --disallowed-tools "run_terminal_cmd,search_replace,web_search,search_tool,use_tool" --deny 'MCPTool(*)' --output-format plain --no-auto-update 2>/tmp/gsd-review-grok-{phase}.err > /tmp/gsd-review-grok-{phase}.md
+  GROK_EXIT=$?
 fi
-if [ ! -s /tmp/gsd-review-grok-{phase}.md ]; then
+if [ "$GROK_EXIT" -ne 0 ] || [ ! -s /tmp/gsd-review-grok-{phase}.md ]; then
   {
-    echo "Grok review failed or returned empty output."
+    echo "Grok review failed (exit $GROK_EXIT) or returned empty output."
     echo ""
     echo "stderr (last 20 lines):"
     tail -20 /tmp/gsd-review-grok-{phase}.err 2>/dev/null
@@ -61,7 +64,7 @@ fi
 ```
 ````
 
-The `--tools "read_file,grep,list_dir"` allowlist keeps the review strictly read-only — no shell, no edits.
+The `--tools "read_file,grep,list_dir"` allowlist blocks grok's builtin shell and edit tools (no `run_terminal_cmd`, no `search_replace`) — but it does not remove MCP meta-tools, so `search_tool,use_tool` in `--disallowed-tools` plus the `--deny 'MCPTool(*)'` backstop (deny rules survive `--yolo`) are what block MCP tool calls.
 
 Stderr goes to a sidecar `.err` log because grok logs diagnostics (including install/auth failures) to stderr — with `2>/dev/null` they vanish silently.
 
