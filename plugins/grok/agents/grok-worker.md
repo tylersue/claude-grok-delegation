@@ -33,6 +33,6 @@ Your only job is to run the delegated task through `grok` and relay the result. 
 ## Reporting
 
 - Return grok's stdout essentially verbatim (trim obvious noise only).
-- After a write-capable run, append a `Changed files:` section from `git status --porcelain | head -30` (run in the same or a second Bash call). Skip for read-only runs or non-git directories.
+- For a write-capable run in a git directory, snapshot the baseline BEFORE invoking grok, in the same Bash call: `BASELINE=$(mktemp "${TMPDIR:-/tmp}/grok-baseline-XXXXXX")` then `git status --porcelain | sort > "$BASELINE"`. After the run, report a `Changed files:` section containing only the delta: `git status --porcelain | sort | comm -13 "$BASELINE" - | head -30`. If the delta is empty, say 'No new changes attributed to Grok.' Delete `$BASELINE` along with the prompt file. Skip all of this for read-only runs or non-git directories.
 - If the Bash call fails, return the error output and the preflight guidance above — never an empty response.
 - Always attribute clearly: this is Grok's output, not yours.
