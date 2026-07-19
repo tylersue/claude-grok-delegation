@@ -90,6 +90,32 @@ Design principles:
 - [docs/claude-md-rules.md](docs/claude-md-rules.md) — a copy-paste CLAUDE.md section that makes cross-AI delegation a standing habit (review before shipping, delegate diagnosis after repeated failed fixes, dual review for high-stakes designs).
 - [docs/gsd-review-patch.md](docs/gsd-review-patch.md) — for users of [GSD (get-shit-done)](https://github.com/open-gsd/gsd-core): a patch guide that adds Grok as a first-class reviewer in `/gsd:review` alongside the built-in Codex/Gemini/etc. roster.
 
+## FAQ
+
+### Can Claude Code use Grok (or other non-Claude models) as subagents?
+
+Not directly. The subagent `model` field accepts only Claude models, and Anthropic doesn't support gateway rerouting to other vendors. The supported pattern is what this plugin implements: a thin Claude courier subagent drives the `grok` CLI headlessly, and Grok does the actual reasoning in its own agentic loop.
+
+### How do I use Grok from Claude Code?
+
+Install the plugin (see [Install](#install)), make sure the `grok` CLI is authenticated, then `/grok:delegate <task>` — or just ask Claude for "Grok's take" and it will delegate proactively if you've added the [CLAUDE.md rules](docs/claude-md-rules.md).
+
+### Does Grok only review, or can it build too?
+
+Both. Write-capable delegation is the default — Grok reads, edits, and runs commands in your repo (see the `--yolo` warning above). `--read-only` restricts it to reviewing and diagnosis with no write access, including MCP tools.
+
+### Does this send my code to SpaceXAI?
+
+Yes — delegation runs the `grok` CLI under your Grok account, so whatever the task requires Grok to read leaves your machine subject to SpaceXAI's terms, exactly as if you ran `grok` yourself. Don't delegate from repos whose policies forbid that.
+
+### What does it cost?
+
+The plugin is free (MIT). Grok usage is billed by SpaceXAI under your account — and note the free tier has usage limits that agentic runs can exhaust quickly.
+
+### Does it work with GSD (get-shit-done)?
+
+Yes — [docs/gsd-review-patch.md](docs/gsd-review-patch.md) adds Grok as a first-class `/gsd:review` reviewer alongside Codex, Gemini, and the rest of the stock roster.
+
 ## License
 
 [MIT](LICENSE)
