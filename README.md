@@ -26,19 +26,21 @@ This plugin is the Grok half of that pattern. It pairs naturally with OpenAI's c
 **As a plugin** (recommended):
 
 ```
-/plugin marketplace add tylersue/grok-delegation
+/plugin marketplace add tylersue/claude-grok-delegation
 /plugin install grok@grok-delegation
 ```
+
+(The marketplace registers under the name `grok-delegation`, so the install command uses that; the older `tylersue/grok-delegation` repo slug still works via GitHub's redirect.)
 
 This registers the `grok:grok-worker` agent and the `/grok:delegate` skill.
 
 **Manual copy** (bare `/grok`, no plugin system):
 
 ```bash
-git clone https://github.com/tylersue/grok-delegation
-cp grok-delegation/plugins/grok/agents/grok-worker.md ~/.claude/agents/
+git clone https://github.com/tylersue/claude-grok-delegation
+cp claude-grok-delegation/plugins/grok/agents/grok-worker.md ~/.claude/agents/
 mkdir -p ~/.claude/skills/grok
-cp grok-delegation/plugins/grok/skills/delegate/SKILL.md ~/.claude/skills/grok/SKILL.md
+cp claude-grok-delegation/plugins/grok/skills/delegate/SKILL.md ~/.claude/skills/grok/SKILL.md
 ```
 
 Restart your Claude Code session so the agent registers.
