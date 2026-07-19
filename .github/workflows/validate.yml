@@ -1,0 +1,77 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifests and component frontmatter
+        run: |
+          python3 - <<'EOF'
+          import json
+
+          def req(d, path):
+              cur = d
+              for key in path.split('.'):
+                  assert isinstance(cur, dict) and key in cur, f"missing field: {path}"
+                  cur = cur[key]
+              assert cur not in (None, ""), f"empty field: {path}"
+              return cur
+
+          m = json.load(open('.claude-plugin/marketplace.json'))
+          p = json.load(open('plugins/grok/.claude-plugin/plugin.json'))
+
+          req(m, 'name')
+          req(m, 'owner.name')
+          req(m, 'owner.email')
+          req(m, 'metadata.description')
+          req(m, 'metadata.version')
+
+          entry = m['plugins'][0]
+          req(entry, 'name')
+          req(entry, 'description')
+          req(entry, 'version')
+          req(entry, 'author.name')
+          req(entry, 'author.email')
+          assert entry['source'] == './plugins/grok', "plugins[0].source must be './plugins/grok'"
+
+          req(p, 'name')
+          req(p, 'description')
+          req(p, 'version')
+          req(p, 'author.name')
+          req(p, 'author.email')
+
+          assert m['metadata']['version'] == entry['version'] == p['version'], (
+              "version fields disagree: "
+              f"{m['metadata']['version']} / {entry['version']} / {p['version']}"
+          )
+
+          for path in ('plugins/grok/agents/grok-worker.md',
+                       'plugins/grok/skills/delegate/SKILL.md'):
+              with open(path) as f:
+                  first = f.readline().rstrip('\n')
+              assert first == '---', f"{path}: first line is not the frontmatter delimiter '---'"
+
+          print('manifest-sanity: all checks passed')
+          EOF
+      - name: Assert no .planning/ path is tracked
+        run: |
+          ! git ls-files | grep '^\.planning/'
+
+  claude-validate:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Run claude plugin validate
+        run: claude plugin validate .

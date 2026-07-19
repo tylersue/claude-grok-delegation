@@ -118,6 +118,10 @@ The plugin is free (MIT). Grok usage is billed by SpaceXAI under your account â€
 
 Yes â€” [docs/gsd-review-patch.md](docs/gsd-review-patch.md) adds Grok as a first-class `/gsd:review` reviewer alongside Codex, Gemini, and the rest of the stock roster.
 
+## Contributing
+
+Contributions are maintainer-reviewed: obvious bug fixes can go straight to a PR, while enhancements and features should start as an issue and wait for maintainer go-ahead before any code is written. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full process and quality bar.
+
 ## License
 
 [MIT](LICENSE)
