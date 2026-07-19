@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 — 2026-07-19
+
+Community governance and a durable author contact channel.
+
+- `author.email` added to both manifests (marketplace.json owner + plugin entry, plugin.json author) — the runtime-visible change driving this release
+- CONTRIBUTING.md: bugs go direct to PR with reproduction steps or a grok-doc citation; enhancements/features are issue-first and wait for maintainer go-ahead
+- CODEOWNERS (maintainer auto-review) plus bug-report/enhancement issue templates and a PR template
+- Two-job CI workflow: `manifest-sanity` (dependency-free, required-candidate) and an informational `claude plugin validate` run
+
 ## 0.1.2 — 2026-07-18
 
 Second cross-AI review round (Codex; findings adversarially verified before fixing).

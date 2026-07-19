@@ -1,8 +1,9 @@
 {
   "name": "grok",
   "description": "Use Grok from Claude Code for second opinions, reviews, diagnosis passes, and delegated implementation work.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": {
-    "name": "Tyler Sue"
+    "name": "Tyler Sue",
+    "email": "tyler.sue49@gmail.com"
   }
 }
