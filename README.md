@@ -32,7 +32,7 @@ This plugin is the Grok half of that pattern. It pairs naturally with OpenAI's c
 
 (The marketplace registers under the name `grok-delegation`, so the install command uses that; the older `tylersue/grok-delegation` repo slug still works via GitHub's redirect.)
 
-This registers the `grok:grok-worker` agent and the `/grok:delegate` skill.
+This registers the `grok:grok-worker` agent, the `/grok:delegate` skill, and the `/grok:review`, `/grok:adversarial-review`, `/grok:rescue`, and `/grok:setup` commands.
 
 **Manual copy** (bare `/grok`, no plugin system):
 
@@ -43,7 +43,7 @@ mkdir -p ~/.claude/skills/grok
 cp claude-grok-delegation/plugins/grok/skills/delegate/SKILL.md ~/.claude/skills/grok/SKILL.md
 ```
 
-Restart your Claude Code session so the agent registers.
+Restart your Claude Code session so the agent registers. Note that the `/grok:*` slash commands ship as plugin surface only — a manual copy gets the agent and skill but not the commands.
 
 ## Usage
 
@@ -56,6 +56,17 @@ Restart your Claude Code session so the agent registers.
 ```
 
 Claude will also delegate proactively (no slash command needed) when a cross-AI second opinion or a fresh diagnosis pass is the right move — see [docs/claude-md-rules.md](docs/claude-md-rules.md) for the CLAUDE.md rules that encourage this.
+
+### Commands
+
+0.2.0 adds a codex-parity command surface; `/grok:delegate` remains the general-purpose entry.
+
+| Command | What it does | Notes |
+|---|---|---|
+| `/grok:review` | Read-only Grok review of local git state | Supports `--base <ref>`, `--scope auto\|working-tree\|branch`, optional focus text; always read-only |
+| `/grok:adversarial-review` | Same machinery, challenge-the-design framing | Questions architecture and assumptions, not just line-level defects; always read-only |
+| `/grok:rescue` | Delegate investigation, a fix, or follow-up work to Grok | Write-capable by default (see the `--yolo` warning); honors `--read-only`, `--resume`\|`--fresh`, `--model`, `--effort`, `--bg` |
+| `/grok:setup` | Preflight: binary, version, auth state, defaults, rate-limit caveat | Never prints credentials; no review-gate equivalent (no stop hook) |
 
 ### Routing flags
 
