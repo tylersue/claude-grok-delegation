@@ -66,6 +66,17 @@ def read(path):
     return path.read_text(encoding="utf-8")
 
 
+def body_of(path):
+    """Return the text AFTER the closing frontmatter '---' (the command body).
+
+    Frontmatter must not satisfy body-scoped assertions (e.g. an argument-hint
+    naming -n/--limit is not a passthrough instruction).
+    """
+    text = read(path)
+    m = re.match(r"^---\n.*?\n---\n", text, re.DOTALL)
+    return text[m.end():] if m else text
+
+
 def parse_frontmatter(path):
     """Parse simple single-line-value YAML frontmatter without PyYAML.
 
@@ -279,6 +290,22 @@ def check_result_boundaries():
         "-r <session-id>" in text,
         "result.md: must degrade to advising `grok -r <session-id>`",
     )
+    # Round-3 hardening (review findings #1-#3): validation, gating, cwd binding
+    require(
+        "look like a UUID" in text and "before any path or glob use" in text,
+        "result.md: missing the session-id format-validation rule "
+        "(UUID shape, checked before any path or glob use)",
+    )
+    require(
+        "sibling or parent worktree" in text,
+        "result.md: Fallback 2 gating must note list-derived ids can belong to "
+        "a sibling or parent worktree's group dir",
+    )
+    require(
+        "same Bash call as the `cd <repo>`" in text,
+        "result.md: the URL-encoding locate one-liner must be bound to the repo "
+        "cwd (same Bash call as the `cd <repo>`)",
+    )
 
 
 def check_transfer():
@@ -299,8 +326,9 @@ def check_transfer():
     )
     # Disclosures
     require(
-        re.search(r"interactive", text, re.IGNORECASE),
-        "transfer.md: missing the interactive-only disclosure",
+        "no `--import-claude-session` CLI flag exists" in text,
+        "transfer.md: missing the interactive-only disclosure anchor "
+        "(literal: no `--import-claude-session` CLI flag exists)",
     )
     require(
         re.search(r"experimental", text, re.IGNORECASE),
@@ -333,20 +361,33 @@ def check_status():
         re.search(r"Never split", text, re.IGNORECASE),
         "status.md: missing the never-split-across-two-Bash-calls sentence",
     )
+    # Body-scoped: the frontmatter argument-hint alone must not satisfy the
+    # passthrough assertion — the instruction has to live in the command body.
+    body = body_of(cmd_path("status"))
     require(
-        re.search(r"(^|[^\w-])-n\b", text) and "--limit" in text,
-        "status.md: must pass -n/--limit through verbatim",
+        re.search(r"(^|[^\w-])-n\b", body) and "--limit" in body,
+        "status.md: must pass -n/--limit through verbatim in the BODY "
+        "(the frontmatter argument-hint does not count)",
     )
     require(
         re.search(r"harness", text, re.IGNORECASE),
         "status.md: missing the harness-tracks-background-delegations note",
     )
-    # No invented flags forwarded as real: --dir/--all may only be named as absent
+    # No invented flags forwarded as real: --dir/--all may only be named as
+    # absent, inside the single denial sentence — conjunctive guard: the denial
+    # sentence must be present AND no other occurrence may exist anywhere in
+    # the file (occurrence-count check; the denial sentence itself contains
+    # exactly one of each).
     require(
-        re.search(r"NO `--dir` or `--all` flag", text)
-        or re.search(r"no --dir/--all", text, re.IGNORECASE)
-        or ("--dir" not in text and "--all" not in text),
-        "status.md: --dir/--all may only be described as absent, never used",
+        re.search(r"NO `--dir` or `--all` flag", text),
+        "status.md: missing the denial sentence 'NO `--dir` or `--all` flag'",
+    )
+    dir_count = text.count("--dir")
+    all_count = text.count("--all")
+    require(
+        dir_count == 1 and all_count == 1,
+        "status.md: --dir/--all may each appear exactly once (inside the denial "
+        f"sentence), found --dir x{dir_count}, --all x{all_count}",
     )
 
 
