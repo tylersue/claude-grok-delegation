@@ -66,6 +66,8 @@ jobs:
       - name: Assert no .planning/ path is tracked
         run: |
           ! git ls-files | grep '^\.planning/'
+      - name: Run Nyquist validation suite
+        run: python3 tests/validate_plugin.py
 
   claude-validate:
     runs-on: ubuntu-latest
