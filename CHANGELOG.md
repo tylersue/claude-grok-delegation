@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 — 2026-07-19
+
+Codex command parity, part 2: grok-native session-bridge commands — every codex command now has a grok equivalent or a documented N/A.
+
+- New `/grok:status` — recent Grok sessions for the current repo via cwd-scoped `grok sessions list` (`-n`/`--limit` passthrough); backgrounded delegations are tracked by the Claude Code harness itself (codex's job queue has no grok counterpart)
+- New `/grok:result` — prints a finished session's `summary.json` metadata and final assistant output from the on-disk transcript under `${GROK_HOME:-~/.grok}/sessions/`; strictly read-only with a hard file-access boundary (nothing outside the session directory, never `auth.json`), never resumes, and degrades to advising `grok -r <id>` if the on-disk layout differs
+- New `/grok:transfer` — preflight + guided handoff into Grok's interactive `/resume` picker via the foreign-session scanner; requires `[compat.claude] sessions` (default on) and the `resume-claude` skill; disclosed as interactive-only and experimental ("staged" per grok's docs)
+- `cancel` documented as N/A in the README command table — background delegations are Claude Code tasks, stopped from Claude Code; destructive `grok sessions delete <id>` footnote added
+- `/grok:setup` ready line now includes `/grok:adversarial-review`
+- README Commands table completed — the full codex command surface is now covered
+
 ## 0.2.0 — 2026-07-19
 
 Codex command parity, part 1: a runtime-free command surface driving the existing grok-worker courier.
