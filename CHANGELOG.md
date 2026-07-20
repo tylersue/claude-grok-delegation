@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.2 — 2026-07-19
+
+Round-3 fixes from the first live `/grok:review` — the plugin reviewed itself. Grok reported 11 findings against v0.2.0..HEAD; adversarial verification confirmed 5 and partially confirmed 6 (nothing refuted), and every worthwhile fix landed.
+
+- `/grok:result` Fallback 2 now also covers list-derived ids when the primary and `.cwd` lookups miss — `sessions list` can return a sibling or parent worktree's session whose transcript lives under that worktree's group dir (empirically reproduced false degradation)
+- `/grok:result` validates the session id before any path or glob use (UUID shape; no `/` or `..`), refuses to fabricate an id when `grok sessions list -n 1` finds no sessions, and binds the URL-encoding one-liner to the repo cwd in the same Bash call
+- `/grok:transfer` names the `GROK_CLAUDE_SESSIONS_ENABLED` env override (env var > config.toml > default-on) and spells out the three-way `sessions`-key detection: `false` → disabled, `true` → enabled (explicit), key/file absent → enabled (default)
+- `/grok:status` wording no longer implies the command injects a default — grok itself defaults to 20 when neither `-n` nor `--limit` is given
+- Validation suite hardened against the four mutation escapes the review exposed: literal no-`--import-claude-session` anchor, body-scoped `-n`/`--limit` passthrough check, occurrence-counted `--dir`/`--all` guard, and three new result.md boundary assertions matching the new wording
+
 ## 0.2.1 — 2026-07-19
 
 Codex command parity, part 2: grok-native session-bridge commands — every codex command now has a grok equivalent or a documented N/A.
