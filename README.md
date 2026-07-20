@@ -32,7 +32,7 @@ This plugin is the Grok half of that pattern. It pairs naturally with OpenAI's c
 
 (The marketplace registers under the name `grok-delegation`, so the install command uses that; the older `tylersue/grok-delegation` repo slug still works via GitHub's redirect.)
 
-This registers the `grok:grok-worker` agent, the `/grok:delegate` skill, and the `/grok:review`, `/grok:adversarial-review`, `/grok:rescue`, and `/grok:setup` commands.
+This registers the `grok:grok-worker` agent, the `/grok:delegate` skill, and the `/grok:review`, `/grok:adversarial-review`, `/grok:rescue`, `/grok:setup`, `/grok:status`, `/grok:result`, and `/grok:transfer` commands.
 
 **Manual copy** (bare `/grok`, no plugin system):
 
@@ -59,7 +59,7 @@ Claude will also delegate proactively (no slash command needed) when a cross-AI 
 
 ### Commands
 
-0.2.0 adds a codex-parity command surface; `/grok:delegate` remains the general-purpose entry.
+0.2.1 completes codex command parity — every codex command now has a grok equivalent or a documented N/A; `/grok:delegate` remains the general-purpose entry.
 
 | Command | What it does | Notes |
 |---|---|---|
@@ -67,6 +67,12 @@ Claude will also delegate proactively (no slash command needed) when a cross-AI 
 | `/grok:adversarial-review` | Same machinery, challenge-the-design framing | Questions architecture and assumptions, not just line-level defects; always read-only |
 | `/grok:rescue` | Delegate investigation, a fix, or follow-up work to Grok | Write-capable by default (see the `--yolo` warning); honors `--read-only`, `--resume`\|`--fresh`, `--model`, `--effort`, `--bg` |
 | `/grok:setup` | Preflight: binary, version, auth state, defaults, rate-limit caveat | Never prints credentials; no review-gate equivalent (no stop hook) |
+| `/grok:status` | Recent Grok sessions for this repo (`grok sessions list`) | cwd-scoped, includes sibling worktrees; passes `-n`/`--limit` through; backgrounded delegations are tracked by the Claude Code harness itself, not a grok job queue |
+| `/grok:result` | Print a finished session's summary and final output from the on-disk transcript | Defaults to the most recent session; read-only, never resumes, never touches credentials; if the on-disk layout differs, it advises `grok -r <id>` instead |
+| `/grok:transfer` | Guided handoff of this Claude Code session into Grok's `/resume` picker | Preflights the compat flag, `resume-claude` skill, and a cwd-matching session; interactive-only and experimental ("staged" per grok's docs) |
+| `cancel` | Not applicable — background delegations are Claude Code tasks; stop them from Claude Code | There is no grok job queue, so there is nothing for a command to cancel |
+
+Sessions themselves can be deleted with `grok sessions delete <id>` — destructive: it removes the session locally AND remotely.
 
 ### Routing flags
 
