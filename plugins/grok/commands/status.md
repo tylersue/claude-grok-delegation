@@ -19,7 +19,7 @@ The cwd rule:
 - So the listing must cd to the repo root and run in the SAME Bash call: `cd <repo> && grok sessions list ...`. Never split the cd and the listing across two Bash calls — the shell's cwd resets between calls.
 
 Flag passthrough:
-- If `-n <count>` or `--limit <count>` appears in the arguments, pass it through verbatim (default 20).
+- If `-n <count>` or `--limit <count>` appears in the arguments, pass it through verbatim. (Grok defaults to 20 when neither is given; do not inject `-n`.)
 - Nothing else is forwarded.
 
 Preflight:

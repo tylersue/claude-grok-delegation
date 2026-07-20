@@ -19,13 +19,15 @@ Core constraint:
 Session-id resolution:
 - If a session id is given in the arguments, use it.
 - Otherwise default to the most recent session for this repo: run `cd <repo> && grok sessions list -n 1` (same-Bash-call rule as `/grok:status` — the listing is cwd-scoped and the shell's cwd resets between calls) and take the top row's SESSION ID.
+- If `grok sessions list -n 1` prints `No sessions found.` (or no data rows), do not fabricate an id — report that no Grok sessions exist for this repo; the user can supply an id instead.
 - If the grok binary is missing AND no id was given, ask the user for a session id instead of failing — the file reads themselves need no binary.
+- Whichever way the id arrived, validate it before any path or glob use: it should look like a UUID (at minimum: non-empty, no `/` or `..`). If it does not, tell the user the id looks wrong and point them at `/grok:status`.
 
 Locating the session directory (per the documented storage layout):
 - Base: `${GROK_HOME:-$HOME/.grok}/sessions/`.
-- Primary: the group directory named by URL-encoding the absolute repo path — every character including `/` is percent-encoded, so the encoded name contains no slash. Compute it with a one-liner: `python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.getcwd(), safe=''))"`.
+- Primary: the group directory named by URL-encoding the absolute repo path — every character including `/` is percent-encoded, so the encoded name contains no slash. Compute it with a one-liner: `python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.getcwd(), safe=''))"` — run it in the same Bash call as the `cd <repo>` (or re-prefix `cd <repo> &&`), because `os.getcwd()` must be the repo root and the shell's cwd resets between calls.
 - Fallback 1 (the documented >255-byte case): if that group dir does not exist, scan the group dirs under `sessions/` for one containing a `.cwd` file whose content equals the absolute repo path (slug+hash naming). The `.cwd` marker files live inside the sessions tree, so reading them during the locate step stays within the boundary.
-- Fallback 2 (only when an explicit session id was given): glob `sessions/*/<session-id>` — session ids are UUIDv7, unique across the whole tree.
+- Fallback 2 (when an explicit session id was given, OR when the id came from the default `-n 1` lookup and both Primary and Fallback 1 miss): glob `sessions/*/<session-id>` — session ids are UUIDv7, unique across the whole tree. List-derived ids can belong to a sibling or parent worktree's group dir, so a Primary/Fallback-1 miss on a listed id is not a dead end.
 - The session dir is `<group>/<session-id>/`.
 
 What to print:
