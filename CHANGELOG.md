@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 — 2026-07-19
+
+Codex command parity, part 1: a runtime-free command surface driving the existing grok-worker courier.
+
+- New `/grok:review` — read-only Grok review of local git state, with scope resolution (`auto|working-tree|branch`, `--base <ref>`) and the git context embedded in the prompt
+- New `/grok:adversarial-review` — the same read-only machinery with challenge-the-design framing: architecture, assumptions, simpler alternatives — not a line-level bug hunt
+- New `/grok:rescue` — delegate investigation, an explicit fix, or follow-up work to grok-worker; write-capable by default, honors `--read-only`, `--resume|--fresh`, `--model`, `--effort`, `--bg`
+- New `/grok:setup` — preflight: binary, version, auth state, config defaults, and the rate-limit caveat
+- Review commands inherit the MCP-hardened read-only flag set and never weaken it
+- Setup checks auth by file existence only and never prints credentials
+- README gains a Commands table under Usage
+- `/grok:delegate` unchanged as the general-purpose entry
+- Remaining codex commands (status/result/transfer/cancel) tracked for 0.2.1 as grok-native session-bridge equivalents or documented N/A
+
 ## 0.1.3 — 2026-07-19
 
 Community governance and a durable author contact channel.
