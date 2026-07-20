@@ -16,4 +16,4 @@ Checks:
 6. **Review-gate**: state explicitly that there is no review-gate equivalent — the grok plugin has no stop hook, so codex's `--enable-review-gate` has no counterpart here (which is why this command takes no flags).
 
 Output rule:
-- Present the checklist. If everything passes, say delegation is ready: `/grok:delegate`, `/grok:review`, `/grok:rescue`.
+- Present the checklist. If everything passes, say delegation is ready: `/grok:delegate`, `/grok:review`, `/grok:adversarial-review`, `/grok:rescue`.
