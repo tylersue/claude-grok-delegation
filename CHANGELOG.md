@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `cancel` row removed from the README command table — there is no grok job queue; background delegations are Claude Code tasks, stopped from Claude Code (the `grok sessions delete <id>` destructive-delete footnote stays)
+- New "Data egress & privacy" README section disclosing the intended inference-API channel, the grok CLI's separate per-turn trace-upload pipeline, the July 2026 grok-build repo-upload incident, and how to minimize exposure
+- (placeholder — Task 3: complete the read-only MCP-hardening flag set in docs/claude-md-rules.md)
+- (placeholder — Task 4: fix the manual-install skill name/directory mismatch in README.md)
+
 ## 0.2.2 — 2026-07-19
 
 Round-3 fixes from the first live `/grok:review` — the plugin reviewed itself. Grok reported 11 findings against v0.2.0..HEAD; adversarial verification confirmed 5 and partially confirmed 6 (nothing refuted), and every worthwhile fix landed.

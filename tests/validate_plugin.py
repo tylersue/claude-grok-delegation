@@ -392,7 +392,7 @@ def check_status():
 
 
 def check_readme():
-    """[CMD-05,CMD-11,CMD-13] README: table of exactly 7 commands + cancel N/A + destructive footnote + manual-copy note."""
+    """[CMD-05,CMD-11,CMD-13] README: table of exactly 7 commands (no cancel row) + destructive footnote + manual-copy note."""
     text = read(README)
     lines = text.splitlines()
     # Parse the Commands table
@@ -410,14 +410,12 @@ def check_readme():
                 break
     if not require(bool(rows), "README.md: Commands table not found under Usage"):
         return
-    grok_cmds, cancel_rows = [], []
+    grok_cmds = []
     for row in rows:
         first_cell = row.split("|")[1].strip()
         m = re.search(r"/grok:([a-z-]+)", first_cell)
         if m:
             grok_cmds.append(m.group(1))
-        elif re.search(r"\bcancel\b", first_cell):
-            cancel_rows.append(row)
         else:
             fail(f"README.md: unexpected Commands-table row: {row!r}")
     require(
@@ -425,17 +423,18 @@ def check_readme():
         f"README.md: Commands table must list exactly the 7 shipped commands, found {sorted(grok_cmds)}",
     )
     require(
-        len(rows) == 8,
-        f"README.md: Commands table must have exactly 8 rows (7 commands + cancel N/A), found {len(rows)}",
+        len(rows) == 7,
+        f"README.md: Commands table must have exactly 7 rows (no cancel row — "
+        f"there is no grok job queue to cancel), found {len(rows)}",
     )
-    if require(len(cancel_rows) == 1, "README.md: Commands table missing the single cancel N/A row"):
-        require(
-            "Not applicable" in cancel_rows[0],
-            "README.md: cancel row must say 'Not applicable' (honest N/A)",
-        )
     require(
         "/grok:cancel" not in text,
         "README.md: must never present cancel as a /grok:cancel command",
+    )
+    require(
+        not re.search(r'^\|\s*`?cancel`?\s*\|', text, re.MULTILINE),
+        "README.md: must not have a command-table row starting with a bare 'cancel' cell "
+        "(phantom command — background delegations are Claude Code tasks, not a grok job queue)",
     )
     # Destructive sessions-delete footnote
     require(
@@ -516,7 +515,7 @@ def check_manifests():
 
 
 def check_changelog():
-    """[CMD-06,CMD-14] CHANGELOG top entry version matches the manifest version."""
+    """[CMD-06,CMD-14] CHANGELOG top versioned entry matches the manifest version (an 'Unreleased' heading may lead)."""
     try:
         manifest_version = json.loads(read(PLUGIN_JSON))["version"]
     except Exception as e:  # manifest failures already reported by check_manifests
@@ -526,13 +525,23 @@ def check_changelog():
     if not require(bool(headings), "CHANGELOG.md: no '## <version>' entries found"):
         return
     top = headings[0]
+    # An 'Unreleased' section may lead the file while work accumulates toward
+    # the next release cut; the first semver heading beneath it is still the
+    # shipped entry and must match the manifest version.
+    versioned = headings[1:] if top == "Unreleased" else headings
+    if not require(
+        bool(versioned),
+        "CHANGELOG.md: no semver entry found beneath the 'Unreleased' heading",
+    ):
+        return
+    top_version = versioned[0]
     require(
-        SEMVER_RE.match(top),
-        f"CHANGELOG.md: top entry heading is not a semver version: {top!r}",
+        SEMVER_RE.match(top_version),
+        f"CHANGELOG.md: top versioned entry heading is not a semver version: {top_version!r}",
     )
     require(
-        top == manifest_version,
-        f"CHANGELOG.md top entry ({top}) must match the manifest version ({manifest_version})",
+        top_version == manifest_version,
+        f"CHANGELOG.md top versioned entry ({top_version}) must match the manifest version ({manifest_version})",
     )
 
 

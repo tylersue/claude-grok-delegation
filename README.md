@@ -70,7 +70,6 @@ Claude will also delegate proactively (no slash command needed) when a cross-AI 
 | `/grok:status` | Recent Grok sessions for this repo (`grok sessions list`) | cwd-scoped, includes sibling worktrees; passes `-n`/`--limit` through; backgrounded delegations are tracked by the Claude Code harness itself, not a grok job queue |
 | `/grok:result` | Print a finished session's summary and final output from the on-disk transcript | Defaults to the most recent session; read-only, never resumes, never touches credentials; if the on-disk layout differs, it advises `grok -r <id>` instead |
 | `/grok:transfer` | Guided handoff of this Claude Code session into Grok's `/resume` picker | Preflights the compat flag, `resume-claude` skill, and a cwd-matching session; interactive-only and experimental ("staged" per grok's docs) |
-| `cancel` | Not applicable — background delegations are Claude Code tasks; stop them from Claude Code | There is no grok job queue, so there is nothing for a command to cancel |
 
 Sessions themselves can be deleted with `grok sessions delete <id>` — destructive: it removes the session locally AND remotely.
 
