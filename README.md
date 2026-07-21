@@ -41,9 +41,15 @@ git clone https://github.com/tylersue/claude-grok-delegation
 cp claude-grok-delegation/plugins/grok/agents/grok-worker.md ~/.claude/agents/
 mkdir -p ~/.claude/skills/grok
 cp claude-grok-delegation/plugins/grok/skills/delegate/SKILL.md ~/.claude/skills/grok/SKILL.md
+
+# Rewrite the copied skill's frontmatter name to match its directory (grok),
+# not the packaged name (delegate):
+sed -i '' 's/^name: delegate$/name: grok/' ~/.claude/skills/grok/SKILL.md   # BSD/macOS
+sed -i 's/^name: delegate$/name: grok/' ~/.claude/skills/grok/SKILL.md      # GNU/Linux
+perl -pi -e 's/^name: delegate$/name: grok/' ~/.claude/skills/grok/SKILL.md # portable alternative
 ```
 
-Restart your Claude Code session so the agent registers. Note that the `/grok:*` slash commands ship as plugin surface only — a manual copy gets the agent and skill but not the commands.
+Run exactly one of the three rename lines for your platform. Restart your Claude Code session so the agent registers. Note that the `/grok:*` slash commands ship as plugin surface only — a manual copy gets the agent and skill but not the commands; the frontmatter rename is what makes the manually-copied skill resolve as bare `/grok` instead of `/delegate`, since Claude Code's skill router keys off the frontmatter `name:` field, not the directory name.
 
 ## Usage
 
