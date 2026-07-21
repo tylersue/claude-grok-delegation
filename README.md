@@ -104,6 +104,28 @@ Design principles:
 - **Never invent model IDs.** The courier only passes `-m` when you explicitly name a model.
 - **Disagreements are surfaced, not resolved silently.** If Grok's take conflicts with Claude's, both positions are presented with attribution.
 
+## Data egress & privacy
+
+Delegating a task hands it to the `grok` CLI running under your own Grok account. Two distinct channels carry data off your machine, and they're not the same thing:
+
+**1. The task itself, via xAI's inference API.** Whatever context the delegated task requires Grok to read — files, diffs, your instructions — goes to xAI's inference API to run the CLI, exactly as if you'd typed it into `grok` yourself. This is the intended, necessary channel.
+
+**2. The grok CLI's own per-turn trace-upload pipeline, independent of what the task needs.** Separately from inference, the `grok` CLI can ship session artifacts to xAI-controlled storage on a per-turn basis — including metadata (repo root path, git remote URL, cwd, your user id/email), prompt images, partial model output, logs, and local memory files. This is gated by a "coding data sharing" setting that has historically defaulted to **opt-in**, and whether uploads actually happen can depend on a **server-controlled flag** — so a local "off" setting is a statement about current server-side trust, not a guaranteed local no-op.
+
+**Context:** in July 2026, a bug in the grok-build harness caused unintended repository content to reach this trace-upload pipeline (the "grok-build repo-upload incident"). xAI's response was to disable default trace retention, flip the relevant server-side upload flags, and open-source the harness for inspection. This plugin doesn't upload anything on its own — it drives the `grok` CLI you already run under your own account, and the exposure described here is a property of that CLI, not something this plugin adds.
+
+**How to minimize what leaves your machine:**
+
+- `grok /privacy opt-out` — opt out of coding data sharing from inside the CLI
+- `GROK_TELEMETRY_ENABLED=0` — disable telemetry
+- `GROK_TELEMETRY_TRACE_UPLOAD=0` — disable the per-turn trace-upload pipeline specifically
+- `GROK_FEEDBACK_ENABLED=0` — disable feedback collection
+- `DISABLE_ERROR_REPORTING=1` — disable error reporting
+- Team-plan accounts can request **Zero Data Retention (ZDR)**
+- Default API retention for the inference channel is **30 days**
+
+A future `/grok:setup` update will surface these settings directly in the preflight check; until then, set the env vars in your shell profile or CI environment.
+
 ## Optional extras
 
 - [docs/claude-md-rules.md](docs/claude-md-rules.md) — a copy-paste CLAUDE.md section that makes cross-AI delegation a standing habit (review before shipping, delegate diagnosis after repeated failed fixes, dual review for high-stakes designs).
@@ -125,7 +147,7 @@ Both. Write-capable delegation is the default — Grok reads, edits, and runs co
 
 ### Does this send my code to SpaceXAI?
 
-Yes — delegation runs the `grok` CLI under your Grok account, so whatever the task requires Grok to read leaves your machine subject to SpaceXAI's terms, exactly as if you ran `grok` yourself. Don't delegate from repos whose policies forbid that.
+Yes — delegation runs the `grok` CLI under your Grok account, so whatever a task requires Grok to read leaves your machine subject to SpaceXAI's terms. See [Data egress & privacy](#data-egress--privacy) for what actually leaves, the grok CLI's own trace-upload pipeline, and how to minimize it. Don't delegate from repos whose policies forbid that.
 
 ### What does it cost?
 
