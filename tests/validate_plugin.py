@@ -47,6 +47,12 @@ NO_ARG_COMMANDS = ["setup", "transfer"]
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
+# T-09-02 residual: no line may mutate config.toml/auth.json via sed -i, tee,
+# or a shell redirect targeting either file. The redirect arm requires a
+# path-like prefix ($HOME or ~ immediately after the '>'/'>>') so it does not
+# false-positive on prose like "resolution order: env var > config.toml > default-on".
+MUTATION_VERB_RE = re.compile(r"sed -i|\btee\b")
+MUTATION_REDIRECT_RE = re.compile(r'>>?\s*[`"\']?(\$\{?HOME\}?|~)["\']?/\.grok/(config\.toml|auth\.json)')
 
 _failures = []  # (tag, message)
 _current_tag = ""
@@ -273,9 +279,19 @@ def check_setup():
     )
     require(re.search(r"30.day", text), "setup.md: missing a 30-day retention mention")
     require(
-        not re.search(r"(grep|python3?\s+-c|jq)\b[^\n]*auth\.json", text),
-        "setup.md: must not introduce any new pattern that greps/parses auth.json contents",
+        not re.search(
+            r"(grep|python3?\s+-c|jq|head|tail|less|more|od|strings|xxd|cut|awk)\b[^\n]*auth\.json",
+            text,
+        ),
+        "setup.md: must not introduce any new pattern that reads/parses auth.json contents "
+        "(grep/python -c/jq/head/tail/less/more/od/strings/xxd/cut/awk)",
     )
+    # T-09-02 residual: no mutation of config.toml/auth.json (sed -i / tee / redirect)
+    for line in text.splitlines():
+        require(
+            not MUTATION_VERB_RE.search(line) and not MUTATION_REDIRECT_RE.search(line),
+            f"setup.md: line must not mutate config.toml/auth.json via sed -i/tee/redirect: {line!r}",
+        )
 
 
 def check_result_boundaries():
@@ -364,11 +380,26 @@ def check_transfer():
         "import-claude" in text,
         "transfer.md: missing the /import-claude settings-not-conversations distinction",
     )
-    # Forward-pointer to /grok:setup's privacy check (REQ-02, Phase 09)
+    # Forward-pointer to /grok:setup's privacy check (REQ-02, Phase 09).
+    # Both signals must appear on the SAME line — a whole-file AND check would
+    # be satisfied by an unrelated /grok:setup mention (e.g. item 1's
+    # binary-missing branch) plus an unrelated privacy/egress mention
+    # elsewhere, even if the actual forward-pointer bullet were deleted.
     require(
-        "/grok:setup" in text and re.search(r"privacy|egress", text, re.IGNORECASE),
-        "transfer.md: missing the forward-pointer sentence to /grok:setup's privacy check",
+        any(
+            "/grok:setup" in line and re.search(r"privacy|egress", line, re.IGNORECASE)
+            for line in text.splitlines()
+        ),
+        "transfer.md: missing a single line containing both /grok:setup and "
+        "privacy|egress (the forward-pointer bullet must carry both signals "
+        "together, not just anywhere in the file)",
     )
+    # T-09-02 residual: no mutation of config.toml/auth.json (sed -i / tee / redirect)
+    for line in text.splitlines():
+        require(
+            not MUTATION_VERB_RE.search(line) and not MUTATION_REDIRECT_RE.search(line),
+            f"transfer.md: line must not mutate config.toml/auth.json via sed -i/tee/redirect: {line!r}",
+        )
 
 
 def check_status():
