@@ -255,6 +255,27 @@ def check_setup():
                 cmd in line,
                 f"setup.md: ready line must name {cmd} (all four delegation commands required)",
             )
+    # Privacy/telemetry posture surface (REQ-02, Phase 09)
+    for env_var in (
+        "GROK_TELEMETRY_ENABLED",
+        "GROK_TELEMETRY_TRACE_UPLOAD",
+        "GROK_FEEDBACK_ENABLED",
+        "DISABLE_ERROR_REPORTING",
+    ):
+        require(env_var in text, f"setup.md: missing the env var {env_var}")
+    require(
+        "grok /privacy opt-out" in text,
+        "setup.md: missing the literal `grok /privacy opt-out`",
+    )
+    require(
+        re.search(r"\bZDR\b|Zero Data Retention", text),
+        "setup.md: missing a ZDR mention",
+    )
+    require(re.search(r"30.day", text), "setup.md: missing a 30-day retention mention")
+    require(
+        not re.search(r"(grep|python3?\s+-c|jq)\b[^\n]*auth\.json", text),
+        "setup.md: must not introduce any new pattern that greps/parses auth.json contents",
+    )
 
 
 def check_result_boundaries():
@@ -342,6 +363,11 @@ def check_transfer():
     require(
         "import-claude" in text,
         "transfer.md: missing the /import-claude settings-not-conversations distinction",
+    )
+    # Forward-pointer to /grok:setup's privacy check (REQ-02, Phase 09)
+    require(
+        "/grok:setup" in text and re.search(r"privacy|egress", text, re.IGNORECASE),
+        "transfer.md: missing the forward-pointer sentence to /grok:setup's privacy check",
     )
 
 
