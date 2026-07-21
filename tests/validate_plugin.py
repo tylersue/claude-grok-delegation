@@ -364,6 +364,11 @@ def check_transfer():
         "import-claude" in text,
         "transfer.md: missing the /import-claude settings-not-conversations distinction",
     )
+    # Forward-pointer to /grok:setup's privacy check (REQ-02, Phase 09)
+    require(
+        "/grok:setup" in text and re.search(r"privacy|egress", text, re.IGNORECASE),
+        "transfer.md: missing the forward-pointer sentence to /grok:setup's privacy check",
+    )
 
 
 def check_status():

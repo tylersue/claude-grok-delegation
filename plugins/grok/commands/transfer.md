@@ -12,6 +12,7 @@ Core constraint:
 - Experimental: grok's own docs label the harness-compat session cells "staged; no scanner consumer yet" while the source implements the scanner — behavior may change between grok versions. Repeat this disclosure in the user-facing output.
 - Do not confuse with grok's TUI `/import-claude` command — that imports SETTINGS (permissions/env/MCP/hooks), not conversations.
 - This command is report-only: it never edits `~/.grok/config.toml`, never installs skills, and never writes anywhere.
+- This handoff shares the same data-egress posture as any grok delegation — to see or opt out of it, run `/grok:setup`'s privacy check (or read the README's "Data egress & privacy" section).
 
 Preflight checks — run via Bash, report each as a short checklist line:
 
