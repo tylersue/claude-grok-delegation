@@ -1,11 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.3.2 — 2026-07-21
+
+Security hardening: honest data-egress disclosure, privacy-tooling surfaced in `/grok:setup`, and courier hardening against prompt-injection and failure-masking (findings #1/#3/#7). Consolidates the accumulated 0.2.2→0.3.2 work into a single release — no 0.3.0/0.3.1 were separately tagged.
 
 - `cancel` row removed from the README command table — there is no grok job queue; background delegations are Claude Code tasks, stopped from Claude Code (the `grok sessions delete <id>` destructive-delete footnote stays)
 - New "Data egress & privacy" README section disclosing the intended inference-API channel, the grok CLI's separate per-turn trace-upload pipeline, the July 2026 grok-build repo-upload incident, and how to minimize exposure
-- (placeholder — Task 3: complete the read-only MCP-hardening flag set in docs/claude-md-rules.md)
-- (placeholder — Task 4: fix the manual-install skill name/directory mismatch in README.md)
+- `docs/claude-md-rules.md` read-only block now lists the full MCP-hardened flag set (`--tools` + `--disallowed-tools` + `--deny 'MCPTool(*)'`), matching `grok-worker.md` exactly
+- Manual-install instructions rewrite the copied skill's frontmatter so its declared `name:` matches its directory (`name: grok`)
+- `/grok:setup` surfaces the local data-sharing/telemetry posture (`config.toml` key-only grep for `telemetry`/`trace_upload`/`feedback` + the four hardening env vars) with an always-on opt-out block (`grok /privacy opt-out`, the env vars, ZDR, 30-day retention), and discloses it cannot read the account-level "coding data sharing" flag locally (that flag lives in `~/.grok/auth.json`, which setup never reads)
+- `/grok:transfer` gains a forward-pointer to `/grok:setup`'s privacy check
+- Non-evaluating Write-tool prompt-file delivery in `grok-worker.md` and the SKILL trivial-question path — task text never touches a shell command line, heredoc, or redirect (finding #1)
+- `GROK_EXIT=$?` captured before any cleanup/reporting, a mandatory greppable `Grok run: SUCCESS/FAILED/TIMEOUT` status line, partial output on failure/timeout labeled "partial output — not a completed result", and the confirmed apostrophe-mismatch classification bug fixed (finding #3)
+- Temp-file cleanup guaranteed three independent ways — `trap` on EXIT/TERM/INT, a follow-up cleanup rule for SIGKILL, and an age-gated preflight sweep (finding #3)
+- Explicit, shell-safe routing-flag grammar (leading-only recognition, `--` terminator, duplicate/missing-value/`--resume`+`--fresh` error-and-stop, `--effort` list-checked, every value passed as its own separately quoted shell argument) written identically into `grok-worker.md` and `SKILL.md`, enforced byte-identical by a validator sync check (finding #7)
+- `/grok:review`, `/grok:adversarial-review`, and `/grok:rescue` all branch on the `Grok run: FAILED`/`TIMEOUT` status line before ever presenting a report as a completed result
+- `tests/validate_plugin.py` gained the D-01..D-15 assertions covering all of the above, each mutation-proven against a deliberately broken copy
 
 ## 0.2.2 — 2026-07-19
 
