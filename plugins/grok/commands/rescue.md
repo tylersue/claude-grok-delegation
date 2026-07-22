@@ -17,6 +17,7 @@ Routing rules:
 - Caution: default mode runs grok with `--yolo` always-approve — Grok can edit files and run shell commands without prompting; prefer `--read-only` when no edits are needed.
 - `--bg` means run the Agent spawn as a Claude background task and report on completion. Do not forward `--bg` as task text.
 - Leave `--model` and `--effort` unset unless explicitly given; pass explicit values through verbatim — never invent model IDs.
+- `--resume` and `--fresh` are mutually exclusive — do not use both together (this command forwards raw text and does not parse flags itself, but the worker's routing-flag grammar treats `--resume` + `--fresh` as an error-and-stop condition, so never document or imply that combining them is valid). Task text that legitimately begins with a dash is passed through after a `--` terminator, consistent with the worker's grammar, so it is never misread as a flag.
 
 Resume handling:
 - If `--resume` or `--fresh` is present, do not ask — the user already chose.
@@ -35,3 +36,4 @@ Output rules:
 - Do not paraphrase, summarize, or do follow-up work of your own.
 - If the user supplied no request, ask what Grok should investigate or fix.
 - Overlap note: `/grok:delegate` remains the general-purpose delegation entry; `/grok:rescue` is the stuck/diagnosis-framed entry.
+- If the courier report begins `Grok run: FAILED` (or the `Grok run: TIMEOUT` class), present it as a failed run and relay the failure verbatim — never paraphrase partial output as a completed result.
