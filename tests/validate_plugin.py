@@ -658,6 +658,130 @@ def check_prompt_file_write_mechanism():
         )
 
 
+def check_failure_classification_and_status_line():
+    """[D-04/D-05/D-06] GROK_EXIT capture, Grok run: status-line contract, partial-output label, apostrophe-safe classification."""
+    text = read(AGENT_FILE)
+    require(
+        "GROK_EXIT=$?" in text,
+        "grok-worker.md: must capture the exit status with the literal 'GROK_EXIT=$?' "
+        "immediately after the grok invocation, before any cleanup or reporting",
+    )
+    require(
+        "Grok run: SUCCESS" in text,
+        "grok-worker.md: missing the literal status line 'Grok run: SUCCESS'",
+    )
+    require(
+        "Grok run: FAILED" in text and re.search(r"\bexit\b", text, re.IGNORECASE),
+        "grok-worker.md: missing a 'Grok run: FAILED' status-line form that also "
+        "names an exit code",
+    )
+    for cls in ("auth", "rate limit", "generic"):
+        require(
+            re.search(re.escape(cls), text, re.IGNORECASE),
+            f"grok-worker.md: FAILED status-line guidance must name the failure "
+            f"class '{cls}'",
+        )
+    require(
+        "Grok run: TIMEOUT" in text,
+        "grok-worker.md: missing the literal status line 'Grok run: TIMEOUT'",
+    )
+    require(
+        "partial output — not a completed result" in text,
+        "grok-worker.md: missing the literal partial-output label "
+        "'partial output — not a completed result'",
+    )
+    require(
+        re.search(r"usage limit", text, re.IGNORECASE),
+        "grok-worker.md: must classify on the apostrophe-free substring 'usage limit'",
+    )
+    require(
+        re.search(r"rate limit", text, re.IGNORECASE),
+        "grok-worker.md: must classify on the apostrophe-free substring 'rate limit'",
+    )
+    require(
+        not re.search(r"You've reached", text),
+        "grok-worker.md: the confirmed apostrophe-mismatch bug string "
+        "\"You've reached\" (straight apostrophe) must never reappear — grok's "
+        "real output uses a curly apostrophe and this match can never fire",
+    )
+    require(
+        "Not signed in" in text,
+        "grok-worker.md: auth guidance must reference grok's real headless "
+        "message substring 'Not signed in'",
+    )
+    require(
+        "grok login --device-code" in text,
+        "grok-worker.md: auth guidance must reference 'grok login --device-code'",
+    )
+    require(
+        "XAI_API_KEY" in text,
+        "grok-worker.md: auth guidance must reference the XAI_API_KEY env var",
+    )
+
+
+def check_cleanup_guarantees():
+    """[D-07/D-08] trap on EXIT/TERM/INT + follow-up rule + age-gated preflight sweep guarantee temp-file cleanup."""
+    text = read(AGENT_FILE)
+    require(
+        re.search(r"trap\s+'rm -f \"\$PROMPT_FILE\" \"\$BASELINE\"'\s+EXIT TERM INT", text),
+        "grok-worker.md: missing the run Bash call's "
+        "trap 'rm -f \"$PROMPT_FILE\" \"$BASELINE\"' EXIT TERM INT line",
+    )
+    require(
+        "next Bash call" in text,
+        "grok-worker.md: follow-up cleanup rule must contain the literal "
+        "'next Bash call'",
+    )
+    require(
+        re.search(
+            r"next Bash call[^\n]*(remov|clean|delet)|"
+            r"(remov|clean|delet)[^\n]*next Bash call",
+            text,
+            re.IGNORECASE,
+        ),
+        "grok-worker.md: must state that the NEXT Bash call after any "
+        "timeout/error removes both temp files before reporting",
+    )
+    require(
+        not re.search(
+            r"delete the prompt temp file:\s*`rm -f \"\$PROMPT_FILE\"`",
+            text,
+        ),
+        "grok-worker.md: the old bare unconditional 'rm -f \"$PROMPT_FILE\"' "
+        "cleanup sentence must be gone — cleanup is now the trap + follow-up "
+        "rule + sweep",
+    )
+    require(
+        re.search(r'find\s+"\$\{TMPDIR:-/tmp\}"\s+-maxdepth 1', text),
+        "grok-worker.md: age-gated sweep must run against "
+        '"${TMPDIR:-/tmp}" -maxdepth 1',
+    )
+    require(
+        "grok-task-*" in text,
+        "grok-worker.md: age-gated sweep must name the glob 'grok-task-*'",
+    )
+    require(
+        "grok-baseline-*" in text,
+        "grok-worker.md: age-gated sweep must name the glob 'grok-baseline-*'",
+    )
+    require(
+        "-mmin +240 -delete" in text,
+        "grok-worker.md: age-gated sweep must contain the literal "
+        "'-mmin +240 -delete'",
+    )
+    skill_text = read(SKILL_FILE)
+    require(
+        re.search(r"trap\s+'rm -f \"\$PROMPT_FILE\"'\s+EXIT TERM INT", skill_text),
+        "SKILL.md: the trivial-question path must set "
+        "trap 'rm -f \"$PROMPT_FILE\"' EXIT TERM INT around its grok run",
+    )
+    require(
+        'mktemp "${TMPDIR:-/tmp}/grok-task-XXXXXX"' in skill_text,
+        "SKILL.md: the locked mktemp template must be preserved alongside the "
+        "new trap",
+    )
+
+
 def check_agent_skill_frontmatter():
     """[regression guard] agent frontmatter (name/description/model/tools) and skill frontmatter (name/description) intact."""
     fm, err = parse_frontmatter(AGENT_FILE)
@@ -696,6 +820,8 @@ CHECKS = [
     ("05/06 runtime-free", check_runtime_free),
     ("agent/skill guard", check_agent_skill_frontmatter),
     ("D-01/D-02/D-03", check_prompt_file_write_mechanism),
+    ("D-04/D-05/D-06", check_failure_classification_and_status_line),
+    ("D-07/D-08", check_cleanup_guarantees),
 ]
 
 
