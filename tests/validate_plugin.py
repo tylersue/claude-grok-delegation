@@ -194,6 +194,12 @@ def check_review_readonly_invariant():
             'subagent_type: "grok:grok-worker"' in text,
             f"{name}.md: must spawn via Agent tool with subagent_type: \"grok:grok-worker\"",
         )
+        require(
+            "Grok run: FAILED" in text,
+            f"{name}.md: must branch on the literal status line 'Grok run: FAILED' "
+            "(or the TIMEOUT class) and present it as a failed run — never summarize "
+            "partial output as a review (D-15)",
+        )
         for flag in forbidden:
             require(
                 not re.search(re.escape(flag) + r"\b", text),
@@ -228,6 +234,18 @@ def check_rescue():
             flag in text,
             f"rescue.md: must document the routing flag '{flag}' (all six required)",
         )
+    require(
+        "Grok run: FAILED" in text,
+        "rescue.md: must branch on the literal status line 'Grok run: FAILED' "
+        "(or the TIMEOUT class) and present it as a failed run — never paraphrase "
+        "partial output as a completed result (D-15)",
+    )
+    require(
+        re.search(r"--resume.{0,80}--fresh.{0,80}mutually exclusive", text, re.IGNORECASE | re.DOTALL),
+        "rescue.md: --resume/--fresh flag docs must state they are mutually exclusive "
+        "(no-contradiction alignment with the routing-flag grammar's error-and-stop "
+        "conflict rule, D-14)",
+    )
 
 
 def check_setup():
