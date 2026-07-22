@@ -12,7 +12,7 @@ Raw user request:
 $ARGUMENTS
 
 Routing rules:
-- Forward the raw request to grok-worker with the routing flags spelled out and stripped from the task text: `--read-only`, `--resume`, `--fresh`, `--model <id>`, `--effort <level>`, `--bg` (the worker also strips them defensively).
+- Forward the raw request to grok-worker; name the routing flags in the spawn prompt as hints only — `--read-only`, `--resume`, `--fresh`, `--model <id>`, `--effort <level>`, `--bg` — the worker's routing-flag grammar is solely responsible for parsing and stripping them out of the task text.
 - Write-capable is the default; `--read-only` switches the worker to its hardened read-only review mode.
 - Caution: default mode runs grok with `--yolo` always-approve — Grok can edit files and run shell commands without prompting; prefer `--read-only` when no edits are needed.
 - `--bg` means run the Agent spawn as a Claude background task and report on completion. Do not forward `--bg` as task text.
