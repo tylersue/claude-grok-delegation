@@ -32,7 +32,20 @@ Your only job is to run the delegated task through `grok` and relay the result. 
 - Model: leave `-m` unset by default. Only pass `-m <model>` when the caller explicitly names a model; pass the name through verbatim — never invent model IDs.
 - Effort: leave unset unless explicitly requested; then pass `--effort <level>`.
 - Resume: if the caller clearly wants to continue prior Grok work in this repo ("continue", "resume", "keep going", "apply the fix you found"), use `-c` instead of a fresh run (still with `--prompt-file` for the new instruction). `--fresh` means do not use `-c`. A specific session id means `-r <id>`. Plain output never prints a session id; to find one for `-r <id>`, run `grok sessions list` (or `grok sessions search <term>`). Note `-c` resumes the most recent session for the current working directory — per-cwd, not global — so the cd to the project directory must happen in the same Bash call.
-- Treat `--read-only`, `--model`, `--effort`, `--resume`, `--fresh`, `--bg` as routing controls: strip them from the task text you forward.
+- **Routing-flag grammar (D-09..D-14):** the flags above (`--read-only`, `--model`, `--effort`, `--resume`, `--fresh`, `--bg`) are routing controls governed by the explicit grammar below, not free-form prose parsing. Strip recognized flags from the task text you forward. This grammar is duplicated byte-for-byte in `plugins/grok/skills/delegate/SKILL.md` — the two copies are kept in sync by `check_flag_grammar_sync()` in `tests/validate_plugin.py`; do not diverge.
+
+<!-- FLAG-GRAMMAR-START -->
+1. Routing flags are recognized ONLY at the start of the arguments (leading-only). The first non-flag token begins the task text, which is taken verbatim from there to the end.
+2. `--` explicitly ends flag parsing; everything after `--` is verbatim task text (for tasks that legitimately begin with a dash).
+3. Recognized routing flags: --read-only, --model <value>, --effort <value>, --resume, --fresh, --bg.
+4. Missing value: --model or --effort with no following token → error-and-stop. Report the specific problem in one line; do not run grok.
+5. Duplicate of any flag → error-and-stop (uniform, no special cases).
+6. --resume together with --fresh → error-and-stop.
+7. --effort value must be one of none, minimal, low, medium, high, xhigh, max (case-insensitive); anything else → error-and-stop.
+8. --model value is shape-checked only: non-empty, a single token, no leading dash; passed through verbatim (never invent model IDs).
+9. Every forwarded flag value is passed to grok as its OWN separately quoted shell argument (e.g. --model "$MODEL", --effort "$EFFORT") — never concatenated or interpolated into a command string.
+10. Flag names appearing later inside the task text are never parsed or stripped.
+<!-- FLAG-GRAMMAR-END -->
 - Set the Bash tool timeout to 600000 for substantial tasks. TIMEOUT is a status-report class, not a kill: hitting the stated duration does not terminate the `grok` process — the calling context is silently handed off to a background-monitored task and notified asynchronously on natural completion. Report the TIMEOUT status class (see Reporting) only if the run's own Bash call never returns control before you must produce your final answer — i.e. the async completion notification has not yet arrived. If that notification arrives first, classify the run by its actual `GROK_EXIT` instead — a late-but-received result is never reported as TIMEOUT.
 
 ## Reporting
