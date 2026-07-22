@@ -719,6 +719,69 @@ def check_failure_classification_and_status_line():
     )
 
 
+def check_cleanup_guarantees():
+    """[D-07/D-08] trap on EXIT/TERM/INT + follow-up rule + age-gated preflight sweep guarantee temp-file cleanup."""
+    text = read(AGENT_FILE)
+    require(
+        re.search(r"trap\s+'rm -f \"\$PROMPT_FILE\" \"\$BASELINE\"'\s+EXIT TERM INT", text),
+        "grok-worker.md: missing the run Bash call's "
+        "trap 'rm -f \"$PROMPT_FILE\" \"$BASELINE\"' EXIT TERM INT line",
+    )
+    require(
+        "next Bash call" in text,
+        "grok-worker.md: follow-up cleanup rule must contain the literal "
+        "'next Bash call'",
+    )
+    require(
+        re.search(
+            r"next Bash call[^\n]*(remov|clean|delet)|"
+            r"(remov|clean|delet)[^\n]*next Bash call",
+            text,
+            re.IGNORECASE,
+        ),
+        "grok-worker.md: must state that the NEXT Bash call after any "
+        "timeout/error removes both temp files before reporting",
+    )
+    require(
+        not re.search(
+            r"delete the prompt temp file:\s*`rm -f \"\$PROMPT_FILE\"`",
+            text,
+        ),
+        "grok-worker.md: the old bare unconditional 'rm -f \"$PROMPT_FILE\"' "
+        "cleanup sentence must be gone — cleanup is now the trap + follow-up "
+        "rule + sweep",
+    )
+    require(
+        re.search(r'find\s+"\$\{TMPDIR:-/tmp\}"\s+-maxdepth 1', text),
+        "grok-worker.md: age-gated sweep must run against "
+        '"${TMPDIR:-/tmp}" -maxdepth 1',
+    )
+    require(
+        "grok-task-*" in text,
+        "grok-worker.md: age-gated sweep must name the glob 'grok-task-*'",
+    )
+    require(
+        "grok-baseline-*" in text,
+        "grok-worker.md: age-gated sweep must name the glob 'grok-baseline-*'",
+    )
+    require(
+        "-mmin +240 -delete" in text,
+        "grok-worker.md: age-gated sweep must contain the literal "
+        "'-mmin +240 -delete'",
+    )
+    skill_text = read(SKILL_FILE)
+    require(
+        re.search(r"trap\s+'rm -f \"\$PROMPT_FILE\"'\s+EXIT TERM INT", skill_text),
+        "SKILL.md: the trivial-question path must set "
+        "trap 'rm -f \"$PROMPT_FILE\"' EXIT TERM INT around its grok run",
+    )
+    require(
+        'mktemp "${TMPDIR:-/tmp}/grok-task-XXXXXX"' in skill_text,
+        "SKILL.md: the locked mktemp template must be preserved alongside the "
+        "new trap",
+    )
+
+
 def check_agent_skill_frontmatter():
     """[regression guard] agent frontmatter (name/description/model/tools) and skill frontmatter (name/description) intact."""
     fm, err = parse_frontmatter(AGENT_FILE)
@@ -758,6 +821,7 @@ CHECKS = [
     ("agent/skill guard", check_agent_skill_frontmatter),
     ("D-01/D-02/D-03", check_prompt_file_write_mechanism),
     ("D-04/D-05/D-06", check_failure_classification_and_status_line),
+    ("D-07/D-08", check_cleanup_guarantees),
 ]
 
 
