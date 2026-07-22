@@ -618,6 +618,46 @@ def check_runtime_free():
         )
 
 
+def check_prompt_file_write_mechanism():
+    """[D-01/D-02/D-03] Task text reaches the prompt file via the Write tool only — never printf/heredoc/redirect."""
+    fm, err = parse_frontmatter(AGENT_FILE)
+    if err:
+        fail(err)
+    else:
+        tools = [t.strip() for t in fm.get("tools", "").split(",")]
+        require(
+            "Write" in tools,
+            "grok-worker.md: frontmatter 'tools' must include 'Write' "
+            "(D-01 prompt-file delivery requires the Write tool)",
+        )
+    for label, path in (("grok-worker.md", AGENT_FILE), ("SKILL.md", SKILL_FILE)):
+        text = read(path)
+        require(
+            "Write tool" in text,
+            f"{label}: must name the Write tool for populating the prompt file",
+        )
+        require(
+            'mktemp "${TMPDIR:-/tmp}/grok-task-XXXXXX"' in text,
+            f"{label}: missing the locked mktemp template "
+            "(round-2 finding #4 regression guard)",
+        )
+        require(
+            not re.search(r"\bprintf\b", text),
+            f"{label}: must not use printf to populate the prompt file — "
+            "Write-tool delivery only",
+        )
+        require(
+            not re.search(r"<<-?\s*[A-Za-z_]", text),
+            f"{label}: must not use an unquoted heredoc delimiter into the "
+            "prompt file — Write-tool delivery only",
+        )
+        require(
+            not re.search(r">\s*\"?\$\{?PROMPT_FILE", text),
+            f"{label}: must not shell-redirect into the prompt file — "
+            "Write-tool delivery only",
+        )
+
+
 def check_agent_skill_frontmatter():
     """[regression guard] agent frontmatter (name/description/model/tools) and skill frontmatter (name/description) intact."""
     fm, err = parse_frontmatter(AGENT_FILE)
@@ -655,6 +695,7 @@ CHECKS = [
     ("CMD-06,CMD-14", check_changelog),
     ("05/06 runtime-free", check_runtime_free),
     ("agent/skill guard", check_agent_skill_frontmatter),
+    ("D-01/D-02/D-03", check_prompt_file_write_mechanism),
 ]
 
 
