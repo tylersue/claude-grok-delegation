@@ -246,6 +246,21 @@ def check_rescue():
         "(no-contradiction alignment with the routing-flag grammar's error-and-stop "
         "conflict rule, D-14)",
     )
+    # WR-01 non-contradiction (10-07): rescue.md must attribute routing-flag
+    # parsing/stripping SOLELY to the worker's grammar, never claim to strip
+    # flags itself.
+    require(
+        "solely responsible" in text,
+        "rescue.md: must attribute routing-flag parsing/stripping solely to "
+        "the worker's grammar (literal 'solely responsible') — must not claim "
+        "to strip flags itself (WR-01 non-contradiction)",
+    )
+    require(
+        "stripped from the task text" not in text,
+        "rescue.md: must not contain the self-attributed phrase 'stripped from "
+        "the task text' — this command forwards raw text and must not claim to "
+        "strip flags itself (WR-01 non-contradiction)",
+    )
 
 
 def check_setup():
