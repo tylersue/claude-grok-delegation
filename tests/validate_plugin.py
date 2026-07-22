@@ -674,6 +674,22 @@ def check_prompt_file_write_mechanism():
             f"{label}: must not shell-redirect into the prompt file — "
             "Write-tool delivery only",
         )
+        require(
+            'echo "$PROMPT_FILE"' in text,
+            f"{label}: must echo the resolved $PROMPT_FILE immediately after "
+            "the mktemp assignment, so the Write tool's file_path can be a "
+            "resolved literal (closes CR-01 observability gap)",
+        )
+        require(
+            re.search(
+                r"(do not persist|does not persist|not persist across)[^.]*bash",
+                text,
+                re.IGNORECASE,
+            ),
+            f"{label}: must instruct carrying the literal path forward "
+            "because shell state does not persist across separate Bash "
+            "tool calls",
+        )
 
 
 def check_failure_classification_and_status_line():
