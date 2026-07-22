@@ -630,7 +630,7 @@ def check_prompt_file_write_mechanism():
             "grok-worker.md: frontmatter 'tools' must include 'Write' "
             "(D-01 prompt-file delivery requires the Write tool)",
         )
-    for label, path in (("grok-worker.md", AGENT_FILE),):
+    for label, path in (("grok-worker.md", AGENT_FILE), ("SKILL.md", SKILL_FILE)):
         text = read(path)
         require(
             "Write tool" in text,
