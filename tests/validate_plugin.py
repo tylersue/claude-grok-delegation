@@ -782,6 +782,72 @@ def check_cleanup_guarantees():
     )
 
 
+def check_flag_grammar_sync():
+    """[D-09..D-14] Routing-flag grammar: fenced block carries all 10 rules (leading-only, `--` terminator, duplicate/missing-value/resume+fresh error-and-stop, --effort list, separately-quoted values, verbatim model passthrough); byte-identical between grok-worker.md and SKILL.md."""
+    marker_re = re.compile(
+        r"<!-- FLAG-GRAMMAR-START -->(.*?)<!-- FLAG-GRAMMAR-END -->", re.DOTALL
+    )
+
+    def extract(label, text):
+        m = marker_re.search(text)
+        if not require(
+            m is not None,
+            f"{label}: missing the <!-- FLAG-GRAMMAR-START --> / "
+            "<!-- FLAG-GRAMMAR-END --> fenced routing-flag grammar block",
+        ):
+            return None
+        return m.group(1)
+
+    def require_tokens(label, block):
+        require(
+            "leading" in block.lower(),
+            f"{label}: flag-grammar block missing the leading-only rule (token 'leading')",
+        )
+        require(
+            "`--`" in block,
+            f"{label}: flag-grammar block missing the `--` terminator mention",
+        )
+        require(
+            "duplicate" in block.lower(),
+            f"{label}: flag-grammar block missing the duplicate=error rule",
+        )
+        require(
+            re.search(r"missing[- ]value", block, re.IGNORECASE) is not None,
+            f"{label}: flag-grammar block missing the missing-value=error rule",
+        )
+        require(
+            "--resume" in block
+            and "--fresh" in block
+            and re.search(
+                r"--resume[^\n]*--fresh[^\n]*(error|conflict)", block, re.IGNORECASE
+            )
+            is not None,
+            f"{label}: flag-grammar block must name --resume together with --fresh "
+            "and an error/conflict word nearby",
+        )
+        for level in ("none", "minimal", "low", "medium", "high", "xhigh", "max"):
+            require(
+                re.search(rf"\b{level}\b", block, re.IGNORECASE) is not None,
+                f"{label}: flag-grammar block missing the --effort level '{level}'",
+            )
+        require(
+            "error-and-stop" in block,
+            f"{label}: flag-grammar block missing the literal 'error-and-stop'",
+        )
+        require(
+            "separately quoted" in block,
+            f"{label}: flag-grammar block missing 'separately quoted' (D-13)",
+        )
+        require(
+            "verbatim" in block,
+            f"{label}: flag-grammar block missing 'verbatim' (--model passthrough)",
+        )
+
+    worker_block = extract("grok-worker.md", read(AGENT_FILE))
+    if worker_block is not None:
+        require_tokens("grok-worker.md", worker_block)
+
+
 def check_agent_skill_frontmatter():
     """[regression guard] agent frontmatter (name/description/model/tools) and skill frontmatter (name/description) intact."""
     fm, err = parse_frontmatter(AGENT_FILE)
@@ -822,6 +888,7 @@ CHECKS = [
     ("D-01/D-02/D-03", check_prompt_file_write_mechanism),
     ("D-04/D-05/D-06", check_failure_classification_and_status_line),
     ("D-07/D-08", check_cleanup_guarantees),
+    ("D-09..D-14", check_flag_grammar_sync),
 ]
 
 
