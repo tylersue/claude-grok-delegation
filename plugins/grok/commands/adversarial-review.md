@@ -43,3 +43,4 @@ Output rules:
 - Relay Grok's findings clearly attributed ("Grok's review: ..."), ordered by severity.
 - Do not fix anything, and do not silently editorialize — if you disagree with a finding, say so explicitly with attribution.
 - If the worker reports a missing binary, an authentication problem, or a rate limit, relay its guidance and point the user at `/grok:setup`.
+- If the courier report begins `Grok run: FAILED` (or the `Grok run: TIMEOUT` class), present it as a failed run and relay the failure — never summarize partial output as a review.

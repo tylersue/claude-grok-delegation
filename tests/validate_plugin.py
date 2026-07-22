@@ -194,6 +194,12 @@ def check_review_readonly_invariant():
             'subagent_type: "grok:grok-worker"' in text,
             f"{name}.md: must spawn via Agent tool with subagent_type: \"grok:grok-worker\"",
         )
+        require(
+            "Grok run: FAILED" in text,
+            f"{name}.md: must branch on the literal status line 'Grok run: FAILED' "
+            "(or the TIMEOUT class) and present it as a failed run — never summarize "
+            "partial output as a review (D-15)",
+        )
         for flag in forbidden:
             require(
                 not re.search(re.escape(flag) + r"\b", text),
