@@ -847,6 +847,17 @@ def check_flag_grammar_sync():
     if worker_block is not None:
         require_tokens("grok-worker.md", worker_block)
 
+    skill_block = extract("SKILL.md", read(SKILL_FILE))
+    if skill_block is not None:
+        require_tokens("SKILL.md", skill_block)
+
+    if worker_block is not None and skill_block is not None:
+        require(
+            worker_block.strip() == skill_block.strip(),
+            "grok-worker.md and SKILL.md flag-grammar blocks must be "
+            "byte-identical (D-14 sync)",
+        )
+
 
 def check_agent_skill_frontmatter():
     """[regression guard] agent frontmatter (name/description/model/tools) and skill frontmatter (name/description) intact."""
