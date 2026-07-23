@@ -791,6 +791,32 @@ def check_cleanup_guarantees():
         "grok-worker.md: must state that the NEXT Bash call after any "
         "timeout/error removes both temp files before reporting",
     )
+    # CR-01: the re-bind/hardcode anchor MUST be scoped to the Follow-up
+    # cleanup rule bullet itself, not the whole file — the primary delivery
+    # bullet (step (3), line 26) already contains "re-bind"/"literal"
+    # language, and a whole-file regex would be satisfied by that unrelated
+    # bullet, reproducing the exact structural blind spot the verifier
+    # flagged (10-VERIFICATION.md gaps[0]).
+    followup_match = re.search(
+        r"Follow-up cleanup rule.*?(?=\n- |\n## |\Z)", text, re.DOTALL
+    )
+    require(
+        followup_match is not None,
+        "grok-worker.md: missing the 'Follow-up cleanup rule' bullet",
+    )
+    if followup_match is not None:
+        followup_bullet = followup_match.group(0)
+        require(
+            re.search(r"re-bind|re-establish|hardcod", followup_bullet, re.IGNORECASE)
+            is not None
+            and re.search(r"\bliteral\b", followup_bullet, re.IGNORECASE) is not None,
+            "grok-worker.md: the Follow-up cleanup rule bullet must instruct "
+            "re-binding or hardcoding the SAME literal $PROMPT_FILE/$BASELINE "
+            "paths (recalled from step (1)'s echo and the BASELINE mktemp "
+            "output) before `rm -f` — otherwise it runs against unset "
+            "variables in the fresh shell and is a silent no-op in exactly "
+            "the SIGKILL case it exists to cover (CR-01)",
+        )
     require(
         not re.search(
             r"delete the prompt temp file:\s*`rm -f \"\$PROMPT_FILE\"`",
@@ -905,6 +931,29 @@ def check_flag_grammar_sync():
             worker_block.strip() == skill_block.strip(),
             "grok-worker.md and SKILL.md flag-grammar blocks must be "
             "byte-identical (D-14 sync)",
+        )
+
+    # CR-02: the freestanding "- Model:" bullet lives OUTSIDE the fenced
+    # FLAG-GRAMMAR block, so it is not covered by the byte-identical
+    # extraction above — check its flag spelling separately against rule 9's
+    # `--model "$MODEL"` example.
+    model_match = re.search(r"^- Model:.*$", read(AGENT_FILE), re.MULTILINE)
+    require(
+        model_match is not None,
+        "grok-worker.md: missing the freestanding '- Model:' bullet",
+    )
+    if model_match is not None:
+        model_bullet = model_match.group(0)
+        require(
+            "--model" in model_bullet,
+            "grok-worker.md: the Model bullet must use `--model`, matching "
+            'flag-grammar rule 9\'s `--model "$MODEL"` example (CR-02)',
+        )
+        require(
+            re.search(r"`-m[`\s]", model_bullet) is None,
+            "grok-worker.md: the Model bullet must not reintroduce the "
+            "backtick `-m` spelling — this contradicts flag-grammar rule 9's "
+            "`--model` example (CR-02)",
         )
 
 
