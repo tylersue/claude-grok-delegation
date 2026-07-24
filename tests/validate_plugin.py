@@ -962,10 +962,29 @@ def check_flag_grammar_sync():
             f"{label}: flag-grammar block must name --resume together with --fresh "
             "and an error/conflict word nearby",
         )
-        for level in ("none", "minimal", "low", "medium", "high", "xhigh", "max"):
+        # Reconciled to the plugin-supported subset (Gap 2b): high/medium/low
+        # is the intersection observed working on the installed grok CLI's
+        # current default model, NOT the CLI's complete accepted set (the
+        # menu is model-dependent server metadata with an xhigh/high/medium/low
+        # built-in fallback — see grok-worker.md's out-of-fence drift note).
+        for level in ("high", "medium", "low"):
             require(
                 re.search(rf"\b{level}\b", block, re.IGNORECASE) is not None,
                 f"{label}: flag-grammar block missing the --effort level '{level}'",
+            )
+        # Negative regression guard (Gap 2b): the stale/superset levels must
+        # never reappear in either byte-identical fenced copy. Bare "none" is
+        # deliberately NOT guarded here — it is a common English word that
+        # could legitimately appear in future grammar prose (e.g. "none of
+        # the flags"), so a negative guard on it risks a false failure on an
+        # innocent edit. "xhigh"/"minimal"/"max" are distinctive tokens with
+        # no such collision risk.
+        for stale in ("xhigh", "minimal", "max"):
+            require(
+                re.search(rf"\b{stale}\b", block, re.IGNORECASE) is None,
+                f"{label}: flag-grammar block must not list '{stale}' as an "
+                "--effort level — the plugin-supported subset is "
+                "high/medium/low (Gap 2b)",
             )
         require(
             "error-and-stop" in block,
@@ -978,6 +997,11 @@ def check_flag_grammar_sync():
         require(
             "verbatim" in block,
             f"{label}: flag-grammar block missing 'verbatim' (--model passthrough)",
+        )
+        require(
+            re.search(r"\bone line\b", block, re.IGNORECASE) is not None,
+            f"{label}: flag-grammar block missing 'one line' — the "
+            "error-and-stop reporting must demand exactly one line (Gap 3)",
         )
 
     worker_block = extract("grok-worker.md", read(AGENT_FILE))
@@ -1017,6 +1041,64 @@ def check_flag_grammar_sync():
             "backtick `-m` spelling — this contradicts flag-grammar rule 9's "
             "`--model` example (CR-02)",
         )
+
+    # Edit D anchor: grok-worker.md must carry the out-of-fence
+    # model-dependent effort-subset version-drift note. Assert co-occurrence
+    # (on the whole file, since the note is a single prose block) of an
+    # --effort reference, a "subset" framing, a model-dependent/built-in
+    # -fallback reference, and a re-verify/re-sync-on-upgrade instruction —
+    # not just any one of these words appearing anywhere unrelated.
+    agent_text = read(AGENT_FILE)
+    require(
+        re.search(r"--effort", agent_text) is not None
+        and re.search(r"\bsubset\b", agent_text, re.IGNORECASE) is not None
+        and re.search(
+            r"model[- ]dependent|per[- ]model", agent_text, re.IGNORECASE
+        )
+        is not None
+        and re.search(
+            r"fallback|metadata", agent_text, re.IGNORECASE
+        )
+        is not None
+        and re.search(
+            r"re-verify|re-sync|upgrade", agent_text, re.IGNORECASE
+        )
+        is not None,
+        "grok-worker.md: must carry the out-of-fence model-dependent "
+        "effort-subset version-drift note (plugin-supported subset, "
+        "model-dependent menu with a fallback, and a re-verify/re-sync-on-"
+        "upgrade instruction) — Edit D",
+    )
+
+    # Edit C anchor (Gap 2a): both files must carry the "before invoking
+    # grok" self-enforcement directive, out of fence. A later edit dropping
+    # Edit C must fail this check. NOTE: grok-worker.md's Cleanup trap bullet
+    # (D-07) already contains the bare substring "before invoking grok" in an
+    # unrelated sentence ("before the $BASELINE snapshot ... and before
+    # invoking grok — is `trap ...`") — anchoring on the bare phrase alone
+    # would false-pass a deletion of Edit C (mutation-proven: see SUMMARY).
+    # Anchor on the longer, distinctive phrase unique to Edit C's directive
+    # instead, still containing "before invoking grok" as a substring.
+    require(
+        re.search(
+            r"routing flags yourself before invoking grok",
+            agent_text,
+            re.IGNORECASE,
+        )
+        is not None,
+        "grok-worker.md: must carry the 'before invoking grok' "
+        "self-enforcement directive (Gap 2a)",
+    )
+    require(
+        re.search(
+            r"routing flags yourself before invoking grok",
+            read(SKILL_FILE),
+            re.IGNORECASE,
+        )
+        is not None,
+        "SKILL.md: must carry the 'before invoking grok' self-enforcement "
+        "directive (Gap 2a)",
+    )
 
 
 def check_agent_skill_frontmatter():
