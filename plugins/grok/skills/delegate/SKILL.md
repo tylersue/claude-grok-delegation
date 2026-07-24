@@ -10,16 +10,16 @@ Route the given task to SpaceXAI's Grok through the `grok-worker` agent (a thin 
 ## Steps
 
 1. **Preflight** (inline, one Bash call): `command -v grok`. If missing, tell the user to run `curl -fsSL https://x.ai/cli/install.sh | bash` and then `grok` once to authenticate; stop.
-2. **Parse routing flags** from the arguments per the explicit grammar below (`--read-only` — review/diagnosis only, no edits, also inferred when the task is clearly a review/opinion request; `--model <id>` — explicit Grok model passthrough; `--effort <level>` — reasoning effort passthrough; `--resume`/`--fresh` — continue the most recent Grok session in this repo vs. start clean; `--bg` — run the agent in the background and report when it completes). This grammar is duplicated byte-for-byte in `plugins/grok/agents/grok-worker.md` — the two copies are kept in sync by `check_flag_grammar_sync()` in `tests/validate_plugin.py`; do not diverge.
+2. **Parse routing flags** from the arguments per the explicit grammar below (`--read-only` — review/diagnosis only, no edits, also inferred when the task is clearly a review/opinion request; `--model <id>` — explicit Grok model passthrough; `--effort <level>` — reasoning effort passthrough; `--resume`/`--fresh` — continue the most recent Grok session in this repo vs. start clean; `--bg` — run the agent in the background and report when it completes). This grammar is duplicated byte-for-byte in `plugins/grok/agents/grok-worker.md` — the two copies are kept in sync by `check_flag_grammar_sync()` in `tests/validate_plugin.py`; do not diverge. **Validate these routing flags yourself before invoking grok:** a missing value, a duplicate flag, `--resume` together with `--fresh`, or an `--effort` value outside rule 7's accepted subset each mean you emit exactly one line naming the problem and never invoke grok — never forward a malformed flag and rely on grok's own argparse to reject it.
 
 <!-- FLAG-GRAMMAR-START -->
 1. Routing flags are recognized ONLY at the start of the arguments (leading-only). The first non-flag token begins the task text, which is taken verbatim from there to the end.
 2. `--` explicitly ends flag parsing; everything after `--` is verbatim task text (for tasks that legitimately begin with a dash).
 3. Recognized routing flags: --read-only, --model <value>, --effort <value>, --resume, --fresh, --bg.
-4. Missing value: --model or --effort with no following token → error-and-stop. Report the specific problem in one line; do not run grok.
+4. Missing value: --model or --effort with no following token → error-and-stop. Report the specific problem in exactly one line — no preamble, no follow-up question, no multi-paragraph reply — and do not run grok.
 5. Duplicate of any flag → error-and-stop (uniform, no special cases).
 6. --resume together with --fresh → error-and-stop.
-7. --effort value must be one of none, minimal, low, medium, high, xhigh, max (case-insensitive); anything else → error-and-stop.
+7. --effort value must be one of high, medium, low (case-insensitive); anything else → error-and-stop.
 8. --model value is shape-checked only: non-empty, a single token, no leading dash; passed through verbatim (never invent model IDs).
 9. Every forwarded flag value is passed to grok as its OWN separately quoted shell argument (e.g. --model "$MODEL", --effort "$EFFORT") — never concatenated or interpolated into a command string.
 10. Flag names appearing later inside the task text are never parsed or stripped.
