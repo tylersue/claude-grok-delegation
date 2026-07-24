@@ -767,6 +767,68 @@ def check_failure_classification_and_status_line():
         "grok-worker.md: auth guidance must reference the XAI_API_KEY env var",
     )
 
+    # --- Gap 1 salience-restructure anchors (10-09) ---
+    # These are REGION-SCOPED, not whole-file: the Reporting section's own
+    # "Grok run:" status-line bullet (asserted above) would satisfy a
+    # whole-file token check even if the role-intro hoist below were deleted
+    # entirely — region-scoping is the point (10-08 CR-01 lesson).
+    pre_preflight, _, rest_after_preflight = text.partition("## Preflight")
+    preflight_section, _, _rest_after_invocation = rest_after_preflight.partition(
+        "## Invocation rules"
+    )
+    reporting_section = text.partition("## Reporting")[2]
+
+    require(
+        "Grok run:" in pre_preflight
+        and re.search(r"first (line|characters)", pre_preflight, re.IGNORECASE)
+        and re.search(
+            r"not installed|missing.*CLI|preflight abort|exempt",
+            pre_preflight,
+            re.IGNORECASE,
+        ),
+        "grok-worker.md: must hoist a role-intro output contract (before "
+        "'## Preflight') naming 'Grok run:' as the report's literal first "
+        "line, with the missing-CLI exemption, so the D-05 rule's salience "
+        "is not buried in the bottom Reporting section (Gap 1)",
+    )
+    require(
+        "Grok run:" in preflight_section
+        and re.search(r"under|never replace|never preced", preflight_section, re.IGNORECASE),
+        "grok-worker.md: the Preflight auth/rate-limit classification prose "
+        "must state it rides UNDER the mandatory 'Grok run:' status line — "
+        "the observed live failure opener derived from this prose "
+        "(Gap 1, review Concern #1)",
+    )
+    bash_fail_bullets = [
+        line for line in reporting_section.splitlines() if re.search(r"Bash call fails", line)
+    ]
+    require(
+        any(
+            "status line" in line.lower() and re.search(r"after", line, re.IGNORECASE)
+            for line in bash_fail_bullets
+        ),
+        "grok-worker.md: the '## Reporting' 'Bash call fails' bullet must "
+        "return error output/preflight guidance AFTER the mandatory "
+        "'Grok run:' status line, not as a competing opener "
+        "(Gap 1, review Concern #1)",
+    )
+    non_empty_lines = [line for line in text.splitlines() if line.strip()]
+    last_line = non_empty_lines[-1] if non_empty_lines else ""
+    require(
+        "status line" in last_line.lower()
+        and re.search(r"first|after", last_line, re.IGNORECASE)
+        and re.search(r"attribut", last_line, re.IGNORECASE),
+        "grok-worker.md: the file's final (last non-empty) instruction must "
+        "subordinate attribution to come AFTER the 'Grok run:' status line, "
+        "which is always the report's first line (Gap 1)",
+    )
+    require(
+        "Always attribute clearly: this is Grok's output, not yours" not in text,
+        "grok-worker.md: the bare unqualified \"Always attribute clearly: "
+        "this is Grok's output, not yours\" line must be reworded (subordinated "
+        "to come after the status line), not retained verbatim (Gap 1)",
+    )
+
 
 def check_cleanup_guarantees():
     """[D-07/D-08] trap on EXIT/TERM/INT + follow-up rule + age-gated preflight sweep guarantee temp-file cleanup."""
