@@ -1107,20 +1107,48 @@ def check_sandbox_confinement():
     agent_text = read(AGENT_FILE)
     skill_text = read(SKILL_FILE)
 
-    # --- Flag presence, region-scoped to the actual backtick-quoted flag
-    # span (D-01/D-08) — NOT a same-physical-line check, since this file's
-    # bullets are long wrapped paragraphs where the explanatory D-01 prose
-    # ("`--sandbox strict` is a kernel-enforced...") re-mentions the flag
-    # later on the SAME physical line even after it's removed from the
-    # actual invocation; scoping to the backtick code span containing the
-    # real flag list avoids that false-pass (mutation-proven below).
-    ro_match = re.search(r"`([^`]*read_file,grep,list_dir[^`]*)`", agent_text)
+    # --- Flag presence, region-scoped to the read-only BULLET (D-01/CR-01) —
+    # NOT a same-physical-line or backtick-code-span check. Pre-GAP-1-fix,
+    # --sandbox strict lived inside the same backtick flag span as
+    # 'read_file,grep,list_dir' (an APPEND composition). The GAP-1 fix makes
+    # read-only mode REPLACE the base command's --sandbox workspace instead,
+    # which moves --sandbox strict OUT of that backtick span into REPLACE-
+    # semantics prose — so the anchor is re-scoped to the whole read-only
+    # bullet region (from the "Read-only mode" marker to the next top-level
+    # bullet), which still fails on a deletion of the flag from the bullet
+    # while tolerating its new position outside the code span.
+    ro_start = agent_text.find("**Read-only mode")
     require(
-        ro_match is not None and "--sandbox strict" in ro_match.group(1),
-        "grok-worker.md: --sandbox strict must appear inside the backtick-"
-        "quoted read-only flag span alongside 'read_file,grep,list_dir' — "
-        "region-scoped to the actual invocation flags, not the surrounding "
-        "explanatory prose (D-01)",
+        ro_start != -1,
+        "grok-worker.md: missing the '**Read-only mode' bullet marker",
+    )
+    ro_rest = agent_text[ro_start:] if ro_start != -1 else ""
+    ro_next = ro_rest.find("\n- ", 1)
+    ro_region = ro_rest[:ro_next] if ro_next != -1 else ro_rest
+    require(
+        "--sandbox strict" in ro_region,
+        "grok-worker.md: --sandbox strict must appear inside the read-only "
+        "bullet region — region-scoped to the bullet (not the backtick flag "
+        "span, since the REPLACE rewrite moves the flag out of that span), "
+        "not unrelated surrounding prose (D-01)",
+    )
+    require(
+        re.search(
+            r"REPLACE.{0,120}--sandbox workspace.{0,120}--sandbox strict",
+            ro_region,
+            re.IGNORECASE | re.DOTALL,
+        )
+        is not None,
+        "grok-worker.md: the read-only bullet must state REPLACE semantics "
+        "explicitly — REPLACE the base command's --sandbox workspace with "
+        "--sandbox strict — so a regression to the append-both composition "
+        "(which grok hard-rejects as a duplicate --sandbox flag) is caught "
+        "(CR-01)",
+    )
+    require(
+        "exactly ONE" in ro_region,
+        "grok-worker.md: the read-only bullet must state the literal "
+        "'exactly ONE' --sandbox-flag-per-invocation invariant (CR-01)",
     )
     base_match = re.search(r"`([^`]*--yolo[^`]*)`", agent_text)
     require(
