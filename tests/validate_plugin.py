@@ -25,6 +25,7 @@ README = REPO / "README.md"
 CHANGELOG = REPO / "CHANGELOG.md"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
 PLUGIN_JSON = REPO / "plugins" / "grok" / ".claude-plugin" / "plugin.json"
+CLAUDE_MD_RULES = REPO / "docs" / "claude-md-rules.md"
 
 ALL_COMMANDS = [
     "review",
@@ -1192,6 +1193,55 @@ def check_sandbox_confinement():
     )
 
 
+def check_sandbox_boundary_docs():
+    """[11] README boundary statement (in-workspace-readable caveat, Linux-only macOS-no-op network caveat, custom-profile pointer) + docs/claude-md-rules.md --sandbox strict sync (Pitfall 5: previously zero coverage)."""
+    # --- docs/claude-md-rules.md sync (net-new coverage, closes Pitfall 5) ---
+    rules_text = read(CLAUDE_MD_RULES)
+    require(
+        "--sandbox strict" in rules_text,
+        "docs/claude-md-rules.md: missing --sandbox strict — this file must "
+        "stay synced with grok-worker.md's read-only flag set (Pitfall 5, "
+        "finding #10 precedent, previously zero validator coverage)",
+    )
+    require(
+        "--deny 'MCPTool(*)'" in rules_text or "read_file,grep,list_dir" in rules_text,
+        "docs/claude-md-rules.md: a sync edit that adds --sandbox strict "
+        "must not delete the pre-existing read-only flag summary",
+    )
+
+    # --- README boundary statement, region-scoped to '## Data egress & privacy' ---
+    # Mirrors check_readme's/check_failure_classification_and_status_line's
+    # region-scoping discipline: bound the section by the NEXT '## ' heading
+    # so these assertions can't be satisfied by unrelated README content.
+    readme_text = read(README)
+    rest = readme_text.partition("## Data egress & privacy")[2]
+    section = rest.partition("\n## ")[0]
+    require(
+        bool(section.strip()),
+        "README.md: missing the '## Data egress & privacy' section",
+    )
+    require(
+        re.search(r"inside\W{0,5}the workspace", section, re.IGNORECASE)
+        is not None,
+        "README.md: the 'Data egress & privacy' section must carry the "
+        "in-workspace-readable caveat (D-02) — files inside the workspace "
+        "stay readable under strict, region-scoped to this section",
+    )
+    require(
+        re.search(r"Linux-only", section) is not None
+        and re.search(r"macOS", section) is not None,
+        "README.md: the 'Data egress & privacy' section must carry the "
+        "Linux-only network-blocking / macOS no-op caveat (Pitfall 4), "
+        "region-scoped to this section",
+    )
+    require(
+        "sandbox.toml" in section and "deny" in section,
+        "README.md: the 'Data egress & privacy' section must point to "
+        "grok's custom sandbox.toml deny-globs opt-in (D-10), region-scoped "
+        "to this section",
+    )
+
+
 def check_agent_skill_frontmatter():
     """[regression guard] agent frontmatter (name/description/model/tools) and skill frontmatter (name/description) intact."""
     fm, err = parse_frontmatter(AGENT_FILE)
@@ -1234,6 +1284,7 @@ CHECKS = [
     ("D-07/D-08", check_cleanup_guarantees),
     ("D-09..D-14", check_flag_grammar_sync),
     ("11: sandbox confinement", check_sandbox_confinement),
+    ("11: sandbox docs/sync", check_sandbox_boundary_docs),
 ]
 
 
