@@ -131,6 +131,19 @@ Delegating a task hands it to the `grok` CLI running under your own Grok account
 
 A future `/grok:setup` update will surface these settings directly in the preflight check; until then, set the env vars in your shell profile or CI environment.
 
+**Read/write confinement, separate from the two channels above.** Grok CLI delegation also runs under grok's own kernel-enforced `--sandbox` profiles — this controls what grok's `read_file`/`grep`/`list_dir` tools and any shell child processes can actually touch on disk, independent of what data leaves your machine via the two channels above.
+
+**What's confined:** read-only reviews (`/grok:review`, `--read-only` runs) use `--sandbox strict` — kernel-enforced (Landlock on Linux, Seatbelt on macOS) confinement of reads to the current working directory plus essential system paths. A read-only run cannot be talked into reading `~/.ssh`, a parent repo, or a stray outside-workspace `.env` file even when the diff or your instructions say to — the confinement doesn't depend on the model obeying anything. Write-capable (`--yolo`) runs use `--sandbox workspace`: writes are confined to the CWD, `~/.grok/`, and temp dirs (reads stay unrestricted), so a `--yolo` run can no longer write to `~/.ssh`, other repos, or system paths.
+
+**What's NOT confined — read this before assuming more than it delivers:**
+
+- Files **inside** the workspace stay readable under `strict` — a repo-local `.env` is still readable, because the CWD is readable by design. The sandbox controls *where* grok can read/write, not *what* inside the workspace it can read.
+- Child-process network blocking is **Linux-only** (seccomp) — a no-op on macOS, where Seatbelt does not enforce it. The tool-level `web_search` disallow described above remains the cross-platform network control regardless of platform.
+
+**Degrade-and-disclose, never fail-closed:** if the sandbox is unavailable (an older CLI without `--sandbox`, an unsupported platform, or a renamed/unrecognized profile after a CLI upgrade), the run proceeds unconfined rather than aborting — and the report always carries a `Sandbox:` line disclosing the actual state (`Sandbox: strict` / `Sandbox: workspace` when active, `Sandbox: UNAVAILABLE — reads/writes unconfined (<reason>)` when degraded), so the confinement state is never silent.
+
+**Want stronger in-workspace protection?** Define a custom grok `sandbox.toml` with `deny` globs (e.g. `**/.env`, `**/*.pem`) to kernel-deny reads of specific in-workspace secrets — kernel-enforced and airtight on macOS. This plugin never writes that config file for you; it's a manual opt-in you set up yourself, with zero config side effects from the plugin.
+
 ## Optional extras
 
 - [docs/claude-md-rules.md](docs/claude-md-rules.md) — a copy-paste CLAUDE.md section that makes cross-AI delegation a standing habit (review before shipping, delegate diagnosis after repeated failed fixes, dual review for high-stakes designs).
