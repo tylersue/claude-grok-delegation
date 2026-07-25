@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.4 — 2026-07-25
+
+Read-path-confinement gap closure (follow-up to 0.3.3 / finding #2). Post-release review and phase verification found a critical fail-closed contradiction in the shipped 0.3.3 read-only path, plus validator-anchor and disclosure gaps; all are fixed here.
+
+- Read-only mode now REPLACES the base command's `--sandbox workspace` with `--sandbox strict` — exactly one `--sandbox` flag per invocation — so the primary review path (`/grok:review`, `/grok:adversarial-review`, `--read-only`) can no longer be handed a doubled `--sandbox` flag the CLI hard-rejects (`cannot be used multiple times`); that doubled-flag fail-closed path from 0.3.3 is fixed (GAP-1).
+- The `delegate` skill's trivial-question path now discloses the self-healing degraded case honestly instead of falsely reporting `Sandbox: strict` when the sandbox could not actually be applied (GAP-2).
+- Sandbox disclosure uses only the two declared vocabulary forms (`reads unconfined` / `writes unconfined`) instead of a slashed `reads/writes unconfined` hybrid; the README network-control statement is corrected for write-capable runs (GAP-2).
+- `tests/validate_plugin.py` gained region-scoped SKILL.md flag and retry-signature anchors, plus a docs `--sandbox workspace` sync anchor, closing three proven mutation escapes (GAP-3).
+- Minor doc/id fixes: dangling README `web_search` reference, ID-reuse cleanup in `grok-worker.md`, and small wording corrections (GAP-4).
+
 ## 0.3.3 — 2026-07-24
 
 Read-path confinement (finding #2): grok invocations now carry a kernel-enforced `--sandbox` profile in addition to the existing tool-level allowlist, so a review or implementation task can no longer be talked into reading or writing outside its intended scope just by asking nicely in the diff/task text. Live-verified on the installed CLI (grok 0.2.111): an outside-workspace read attempt under `strict` came back kernel-denied (`Permission denied`), and the resume-conflict preflight rejection this repo's own pre-phase sessions were guaranteed to hit was reproduced and gracefully degraded, never failed closed.
