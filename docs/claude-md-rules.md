@@ -15,7 +15,7 @@ essential system paths) plus `--tools "read_file,grep,list_dir"` plus
 `--deny 'MCPTool(*)'` — the `search_tool,use_tool` disallow and the
 `--deny 'MCPTool(*)'` backstop, which survives `--yolo`, are what block
 MCP meta-tools; write-capable `--yolo` runs add `--sandbox workspace`
-(write confinement to the CWD, `~/.grok/`, and temp dirs) instead. Best
+(write confinement to the CWD, `~/.grok/`, and temp dirs) instead). Best
 for independent second opinions from a non-Claude model family and
 parallel delegated implementation.
 
