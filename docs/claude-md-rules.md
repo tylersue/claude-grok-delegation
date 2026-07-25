@@ -8,12 +8,16 @@ Add this section to your global `~/.claude/CLAUDE.md` (or a project CLAUDE.md) t
 The SpaceXAI Grok CLI is a standing delegation target in every project, via the
 `grok-worker` agent and the grok delegate skill (drives `grok` headless:
 `--prompt-file`, `--yolo`, `--output-format plain`; read-only reviews add
-`--tools "read_file,grep,list_dir"` plus `--disallowed-tools
+`--sandbox strict` (kernel-enforced read confinement to the CWD plus
+essential system paths) plus `--tools "read_file,grep,list_dir"` plus
+`--disallowed-tools
 "run_terminal_cmd,search_replace,web_search,search_tool,use_tool"` plus
 `--deny 'MCPTool(*)'` — the `search_tool,use_tool` disallow and the
 `--deny 'MCPTool(*)'` backstop, which survives `--yolo`, are what block
-MCP meta-tools). Best for independent second opinions from a non-Claude
-model family and parallel delegated implementation.
+MCP meta-tools; write-capable `--yolo` runs add `--sandbox workspace`
+(write confinement to the CWD, `~/.grok/`, and temp dirs) instead. Best
+for independent second opinions from a non-Claude model family and
+parallel delegated implementation.
 
 Natural triggers (apply unless the user opts out):
 - Before merging/shipping nontrivial work → get a cross-AI review
