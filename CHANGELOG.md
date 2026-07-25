@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.3 — 2026-07-24
+
+Read-path confinement (finding #2): grok invocations now carry a kernel-enforced `--sandbox` profile in addition to the existing tool-level allowlist, so a review or implementation task can no longer be talked into reading or writing outside its intended scope just by asking nicely in the diff/task text. Live-verified on the installed CLI (grok 0.2.111): an outside-workspace read attempt under `strict` came back kernel-denied (`Permission denied`), and the resume-conflict preflight rejection this repo's own pre-phase sessions were guaranteed to hit was reproduced and gracefully degraded, never failed closed.
+
+- Read-only mode runs under `--sandbox strict` — kernel-enforced (Landlock on Linux, Seatbelt on macOS) read confinement layered under the existing `--tools`/`--disallowed-tools`/`--deny` allowlist: the allowlist blocks tool *availability*, the sandbox blocks filesystem *access* even for allowed tools. A review can no longer be talked into reading `~/.ssh`, a parent repo, or a stray outside-workspace `.env` file.
+- Write-capable `--yolo` runs carry `--sandbox workspace` — writes confined to CWD + `~/.grok/` + temp dirs while reads stay unrestricted; a delegated implementation task can no longer write to `~/.ssh`, other repos, or system paths.
+- New preflight-rejection detection-and-retry mechanic: on a nonzero exit matching one of three known signatures (unknown/renamed sandbox profile, resume-conflict against a pre-existing session, or an old-CLI unrecognized `--sandbox` flag), the courier retries the identical command with `--sandbox` dropped and discloses the degraded state — never fails closed.
+- Always-on `Sandbox:` disclosure line under every `Grok run:` status line (`strict` / `workspace` / `UNAVAILABLE — reads|writes unconfined (<reason>)`), on both entry points (`grok-worker` agent and the `delegate` skill's trivial-question path).
+- README "Data egress & privacy" section gains the confinement boundary statement — what `--sandbox strict`/`workspace` confine and what they don't (in-workspace files stay readable by design; child-process network blocking is Linux-only, a no-op on macOS) — plus a pointer to grok's own custom `sandbox.toml` `deny`-glob opt-in for power users who want in-workspace secret denial.
+- `docs/claude-md-rules.md` re-synced to name `--sandbox strict`/`workspace` alongside the existing flag set, closing a zero-validator-coverage drift risk the same class as finding #10.
+- `tests/validate_plugin.py` gained mutation-proven, region-scoped anchors for the sandbox flags, the disclosure-line contract, the retry signatures, and the doc sync (18 → 20 check groups).
+
 ## 0.3.2 — 2026-07-21
 
 Security hardening: honest data-egress disclosure, privacy-tooling surfaced in `/grok:setup`, and courier hardening against prompt-injection and failure-masking (findings #1/#3/#7). Consolidates the accumulated 0.2.2→0.3.2 work into a single release — no 0.3.0/0.3.1 were separately tagged.
