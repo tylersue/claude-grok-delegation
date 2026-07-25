@@ -1163,9 +1163,19 @@ def check_sandbox_confinement():
         "--sandbox strict" in agent_text,
         "grok-worker.md: missing --sandbox strict",
     )
+    # SKILL.md side is region-scoped to the backtick-quoted grok command span
+    # itself (WR-01a) — NOT a whole-file substring test. The bullet's
+    # explanatory sentence right after the command also mentions
+    # "--sandbox strict" in prose, so a whole-file check would false-pass a
+    # deletion of the flag from the actual invocation as long as that prose
+    # mention survived (mutation-proven below).
+    skill_cmd = re.search(r"`(grok --prompt-file[^`]*)`", skill_text)
     require(
-        "--sandbox strict" in skill_text,
-        "SKILL.md: missing --sandbox strict (D-07 second entry point)",
+        skill_cmd is not None and "--sandbox strict" in skill_cmd.group(1),
+        "SKILL.md: --sandbox strict must appear inside the backtick-quoted "
+        "`grok --prompt-file ...` command span — region-scoped to the "
+        "actual invocation, not the surrounding explanatory prose that also "
+        "mentions the flag (D-07 second entry point, WR-01a)",
     )
 
     # --- Region-scoped Sandbox: disclosure — partition on '## Reporting' (D-05) ---
@@ -1220,6 +1230,22 @@ def check_sandbox_confinement():
         "'sandbox could not be applied:' (no-retry disclosure case)",
     )
 
+    # --- Same three retry signatures, anchored on the SKILL entry point too
+    # (WR-01b) — the SKILL.md trivial-question path is a second, independent
+    # entry point that also drops --sandbox and retries on the same three
+    # signatures; without this, deleting the SKILL retry bullet (one of this
+    # phase's deliverables on that entry point) passed the suite.
+    for sig in (
+        "refusing to start rather than run unsandboxed",
+        "cannot resume this session under sandbox profile",
+        "unexpected argument '--sandbox' found",
+    ):
+        require(
+            sig in skill_text,
+            f"SKILL.md: missing the preflight-rejection retry signature "
+            f"{sig!r} (D-07 second entry point, WR-01b)",
+        )
+
 
 def check_sandbox_boundary_docs():
     """[11] README boundary statement (in-workspace-readable caveat, Linux-only macOS-no-op network caveat, custom-profile pointer) + docs/claude-md-rules.md --sandbox strict sync (Pitfall 5: previously zero coverage)."""
@@ -1232,9 +1258,17 @@ def check_sandbox_boundary_docs():
         "finding #10 precedent, previously zero validator coverage)",
     )
     require(
-        "--deny 'MCPTool(*)'" in rules_text or "read_file,grep,list_dir" in rules_text,
+        "--sandbox workspace" in rules_text,
+        "docs/claude-md-rules.md: missing --sandbox workspace — the "
+        "write-capable half of the doc sync (WR-01c) was previously "
+        "uncovered, so deleting it passed the suite",
+    )
+    require(
+        "--deny 'MCPTool(*)'" in rules_text and "read_file,grep,list_dir" in rules_text,
         "docs/claude-md-rules.md: a sync edit that adds --sandbox strict "
-        "must not delete the pre-existing read-only flag summary",
+        "must not delete EITHER half of the pre-existing read-only flag "
+        "summary — both --deny 'MCPTool(*)' AND read_file,grep,list_dir are "
+        "required (tightened from OR to AND, WR-01c)",
     )
 
     # --- README boundary statement, region-scoped to '## Data egress & privacy' ---
