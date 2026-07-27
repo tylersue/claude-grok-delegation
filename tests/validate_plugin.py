@@ -52,8 +52,17 @@ SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 # or a shell redirect targeting either file. The redirect arm requires a
 # path-like prefix ($HOME or ~ immediately after the '>'/'>>') so it does not
 # false-positive on prose like "resolution order: env var > config.toml > default-on".
+# Second alternative (Phase 12 Pitfall 7): a GROK_HOME-relative path has NO
+# `/.grok/` infix before the filename (GROK_HOME already points AT the .grok
+# dir, e.g. `${GROK_HOME:-$HOME/.grok}/auth.json`) — the first alternative's
+# required `/.grok/` substring would never match it, so this arm matches a
+# redirect into `$GROK_HOME`/`${GROK_HOME}`/`${GROK_HOME:-...}` immediately
+# followed by `/(config.toml|auth.json)`, with no `/.grok/` requirement.
 MUTATION_VERB_RE = re.compile(r"sed -i|\btee\b")
-MUTATION_REDIRECT_RE = re.compile(r'>>?\s*[`"\']?(\$\{?HOME\}?|~)["\']?/\.grok/(config\.toml|auth\.json)')
+MUTATION_REDIRECT_RE = re.compile(
+    r'>>?\s*[`"\']?(\$\{?HOME\}?|~)["\']?/\.grok/(config\.toml|auth\.json)'
+    r'|>>?\s*[`"\']?\$(?:GROK_HOME\b|\{GROK_HOME(?::-[^}]*)?\})["\']?/(config\.toml|auth\.json)'
+)
 
 _failures = []  # (tag, message)
 _current_tag = ""
