@@ -218,6 +218,145 @@ def check_review_readonly_invariant():
             )
 
 
+def check_review_git_edge_cases():
+    """[12: review git edges] review + adversarial-review: D-08..D-11 git
+    edge-case handling (invalid --scope / non-resolving --base error-and-stop,
+    not-a-repo / unborn-HEAD degrade, base-resolution dead ends with
+    self-authored EMPTY-stderr messages, empty-scope-vs-git-error with the
+    shared AskUserQuestion budget), region-scoped to the scope-resolution
+    section; mirrored byte-identical between the two files."""
+    scope_regions = {}
+    for name in ("review", "adversarial-review"):
+        text = read(cmd_path(name))
+        start = text.find("Scope resolution")
+        require(start != -1, f"{name}.md: missing the 'Scope resolution' section marker")
+        end = text.find("Building the review prompt:", start) if start != -1 else -1
+        region = (
+            text[start:end]
+            if start != -1 and end != -1
+            else (text[start:] if start != -1 else "")
+        )
+        scope_regions[name] = region
+
+        # D-08: malformed --scope / non-resolving --base -> error-and-stop,
+        # naming the accepted set, worker never spawned.
+        require(
+            "an invalid `--scope` value" in region
+            and "`auto`, `working-tree`, or `branch`" in region,
+            f"{name}.md: scope-resolution section must error-and-stop on an "
+            "invalid --scope value, naming the accepted set "
+            "(auto/working-tree/branch) (D-08)",
+        )
+        require(
+            "git rev-parse --verify --quiet <ref>^{commit}" in region
+            and "explicit, valid `--base <ref>`" in region,
+            f"{name}.md: scope-resolution section must validate --base up "
+            "front with `git rev-parse --verify --quiet <ref>^{commit}` and "
+            "error-and-stop naming the unresolvable ref (D-08)",
+        )
+        require(
+            "no follow-up question, the worker is never spawned" in region,
+            f"{name}.md: scope-resolution section must state the worker is "
+            "never spawned on malformed --scope/--base input (D-08) — this "
+            "anchor is scoped to the D-08 bullet's own phrasing so a "
+            "deletion cannot be masked by the similar D-09/D-10 sentences",
+        )
+
+        # D-09: not-a-repo always error-and-stop; unborn-HEAD degrade note;
+        # explicit --scope branch on unborn HEAD errors-and-stops.
+        require(
+            "not-a-repo" in region
+            and "always error-and-stop relaying git's stderr" in region,
+            f"{name}.md: scope-resolution section must error-and-stop on "
+            "not-a-repo, relaying git's stderr (D-09)",
+        )
+        require(
+            "unborn HEAD — reviewing untracked working tree; branch scope "
+            "unavailable" in region,
+            f"{name}.md: scope-resolution section missing the unborn-HEAD "
+            "degrade disclosure note (D-09)",
+        )
+        require(
+            "Explicit `--scope branch` on unborn HEAD → error-and-stop" in region,
+            f"{name}.md: scope-resolution section must error-and-stop on an "
+            "explicit --scope branch against an unborn HEAD (D-09)",
+        )
+
+        # D-10: fallback-chain-exhausted / disjoint-history merge-base ->
+        # self-authored error-and-stop (git's own stderr is EMPTY for both),
+        # instructing an explicit --base; worker never spawned.
+        require(
+            "git merge-base <base> HEAD` fails on disjoint histories" in region,
+            f"{name}.md: scope-resolution section must name disjoint-history "
+            "merge-base failure as a base-resolution dead end (D-10)",
+        )
+        require(
+            re.search(
+                r"show-ref --verify --quiet refs/heads/main.{0,40}"
+                r"refs/heads/master.{0,40}both fail",
+                region,
+                re.DOTALL,
+            )
+            is not None,
+            f"{name}.md: scope-resolution section must name the exhausted "
+            "default-branch fallback chain (origin/HEAD, main, master all "
+            "absent) as a base-resolution dead end (D-10)",
+        )
+        require(
+            "EMPTY stderr from git" in region,
+            f"{name}.md: scope-resolution section must state that git's own "
+            "stderr is EMPTY for the fallback-exhaustion and disjoint-history "
+            "cases, requiring a self-authored message (D-10, Pitfall 6)",
+        )
+        require(
+            "the worker is never spawned on a base dead end" in region,
+            f"{name}.md: scope-resolution section must state the worker is "
+            "never spawned on a base-resolution dead end (D-10)",
+        )
+        require(
+            region.count("`--base <ref>`") >= 2,
+            f"{name}.md: both the malformed-input (D-08) and base-dead-end "
+            "(D-10) branches must instruct the user to pass an explicit "
+            "--base <ref>",
+        )
+
+        # D-11: empty-diff vs git-error never conflated; empty-scope shares
+        # the single AskUserQuestion budget; worker never spawned for an
+        # empty scope.
+        require(
+            region.count("genuinely empty scope") >= 2,
+            f"{name}.md: scope-resolution section must name 'genuinely empty "
+            "scope' as a second AskUserQuestion trigger AND define its "
+            "handling in the D-11 bullet (shared budget, D-11)",
+        )
+        require(
+            "Whichever of these two triggers fires first spends the single "
+            "question" in region,
+            f"{name}.md: scope-resolution section must state the "
+            "AskUserQuestion budget is shared across the dirty-tree+--base "
+            "ambiguity trigger and the empty-scope trigger (D-11)",
+        )
+        require(
+            "The worker is never spawned for an empty scope either way" in region,
+            f"{name}.md: scope-resolution section must state the worker is "
+            "never spawned for a genuinely empty scope (D-11)",
+        )
+
+    # Mirrored identically between the two files (diff shows no divergence
+    # beyond the pre-existing review-framing parenthetical on
+    # adversarial-review.md's section header).
+    review_region = scope_regions["review"].strip()
+    adv_region = scope_regions["adversarial-review"].strip().replace(
+        "Scope resolution (same as `/grok:review`):", "Scope resolution:"
+    )
+    require(
+        review_region == adv_region,
+        "review.md and adversarial-review.md scope-resolution sections must "
+        "be mirrored identically (beyond the pre-existing review-framing "
+        "parenthetical) — D-08..D-11 edits diverged between the two files",
+    )
+
+
 def check_rescue():
     """[CMD-03] rescue: Agent spawn of grok:grok-worker, no-Skill-indirection warning, all six routing flags."""
     text = read(cmd_path("rescue"))
@@ -1611,6 +1750,7 @@ CHECKS = [
     ("CMD-01..04,08..10", check_frontmatter_shape),
     ("CMD-01..04,08..10", check_disable_model_invocation),
     ("CMD-01,CMD-02", check_review_readonly_invariant),
+    ("12: review git edges", check_review_git_edge_cases),
     ("CMD-03", check_rescue),
     ("CMD-04,CMD-12", check_setup),
     ("CMD-09", check_result_boundaries),
