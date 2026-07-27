@@ -332,8 +332,10 @@ def check_result_boundaries():
     """[CMD-09] result: four boundary sentences + locate chain + tail extraction + grok -r degradation."""
     text = read(cmd_path("result"))
     require(
-        "reads ONLY inside `${GROK_HOME:-~/.grok}/sessions/`" in text,
-        "result.md: missing the sessions-tree-only boundary sentence",
+        "reads ONLY inside `${GROK_HOME:-$HOME/.grok}/sessions/`" in text,
+        "result.md: missing the sessions-tree-only boundary sentence ($HOME "
+        "form, not the tilde form which silently fails to expand when "
+        "double-quoted — Pitfall 3)",
     )
     require(
         "Never read `~/.grok/auth.json`" in text,
@@ -361,11 +363,73 @@ def check_result_boundaries():
         "-r <session-id>" in text,
         "result.md: must degrade to advising `grok -r <session-id>`",
     )
-    # Round-3 hardening (review findings #1-#3): validation, gating, cwd binding
+    # D-03 (Phase 12): strict 8-4-4-4-12 UUID grammar replaces the old loose
+    # "look like a UUID / no `/` or `..`" check. Region-scoped to the
+    # "Session-id resolution:" section (between its own marker and the next
+    # top-level section) so the assertion cannot be satisfied by unrelated
+    # prose elsewhere in the file.
+    id_start = text.find("Session-id resolution:")
+    require(id_start != -1, "result.md: missing the 'Session-id resolution:' section marker")
+    id_next = text.find("Locating the session directory", id_start) if id_start != -1 else -1
+    id_region = (
+        text[id_start:id_next]
+        if id_start != -1 and id_next != -1
+        else (text[id_start:] if id_start != -1 else "")
+    )
     require(
-        "look like a UUID" in text and "before any path or glob use" in text,
-        "result.md: missing the session-id format-validation rule "
-        "(UUID shape, checked before any path or glob use)",
+        "8-4-4-4-12" in id_region and "before any path or glob use" in id_region,
+        "result.md: missing the strict 8-4-4-4-12 UUID grammar description in "
+        "the id-validation rule (checked before any path or glob use)",
+    )
+    require(
+        re.search(r"case-normal\w*", id_region, re.IGNORECASE) is not None,
+        "result.md: id-validation rule must state case-normalization "
+        "(bare 'lowercase' is not a sufficient anchor — it also describes "
+        "the hex-digit shape and would not catch a mutation removing the "
+        "case-normalization behavior)",
+    )
+    require(
+        "from the arguments" in id_region and "sessions list -n 1` lookup" in id_region,
+        "result.md: id-validation rule must apply to BOTH argument-supplied "
+        "ids and the default `sessions list -n 1` lookup",
+    )
+    require(
+        "no `/` or `..`" not in text,
+        "result.md: the old loose id-validation phrase (no `/` or `..`) must "
+        "be fully replaced by the strict UUID grammar (D-03)",
+    )
+    # D-02 (Phase 12): containment check before any read. Region-scoped to the
+    # "Containment check" section (between its own marker and "What to print:").
+    cc_start = text.find("Containment check")
+    require(cc_start != -1, "result.md: missing the 'Containment check' section")
+    cc_next = text.find("What to print:", cc_start) if cc_start != -1 else -1
+    cc_region = (
+        text[cc_start:cc_next]
+        if cc_start != -1 and cc_next != -1
+        else (text[cc_start:] if cc_start != -1 else "")
+    )
+    require(
+        re.search(r"canonicali[sz]e|realpath|resolve", cc_region, re.IGNORECASE) is not None
+        and "${GROK_HOME:-$HOME/.grok}/sessions/" in cc_region,
+        "result.md: containment check must canonicalize/resolve the located "
+        "session dir and verify it is inside "
+        "${GROK_HOME:-$HOME/.grok}/sessions/ before any read",
+    )
+    require(
+        "before ANY read" in cc_region,
+        "result.md: containment check must explicitly run before ANY file read",
+    )
+    require(
+        "ESCAPED" in cc_region
+        and "read NOTHING" in cc_region
+        and "grok -r <session-id>" in cc_region,
+        "result.md: containment check must refuse-and-report on escape — read "
+        "nothing and point at `grok -r <session-id>`",
+    )
+    require(
+        "NOT a degrade case" in cc_region,
+        "result.md: containment check failure must be explicitly stated as "
+        "NOT a degrade case (it is the confidentiality boundary itself)",
     )
     require(
         "sibling or parent worktree" in text,
