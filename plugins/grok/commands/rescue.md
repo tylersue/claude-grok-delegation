@@ -29,11 +29,20 @@ Resume handling:
 
 Preflight:
 - Optionally run one inline Bash call — `command -v grok` — to fail fast. If the binary is missing, stop and tell the user to run `/grok:setup`; do not spawn the worker just to learn the binary is absent.
-- If the worker later reports an authentication or rate-limit problem, relay its guidance verbatim and mention `/grok:setup`.
+- If the worker later reports the grok CLI is missing (the courier's preflight abort — no `Grok run:` line is emitted for this one exempted case), relay its install guidance and mention `/grok:setup`. For a courier report of an attempted run, see the courier-failure handling under Output rules below.
 
 Output rules:
 - Return Grok's output essentially verbatim, attributed ("Grok's result: ...").
 - Do not paraphrase, summarize, or do follow-up work of your own.
 - If the user supplied no request, ask what Grok should investigate or fix.
 - Overlap note: `/grok:delegate` remains the general-purpose delegation entry; `/grok:rescue` is the stuck/diagnosis-framed entry.
-- If the courier report begins `Grok run: FAILED` (or the `Grok run: TIMEOUT` class), present it as a failed run and relay the failure verbatim — never paraphrase partial output as a completed result.
+
+<!-- COURIER-FAILURE-START -->
+**Courier-failure handling (D-12..D-15):** the courier's `Grok run:` status line is always preserved verbatim as the literal first line of what is presented here — never paraphrased. Branch on that literal line only; never re-derive the failure class from grok's own raw output prose.
+- `Grok run: FAILED (exit N — auth)` — an authentication problem. Relay the courier's guidance verbatim and point the user at `/grok:setup`.
+- `Grok run: FAILED (exit N — rate limit)` — state explicitly that this is NOT an authentication failure; do not point at `/grok:setup`. Suggest waiting and retrying later, or falling back to another reviewer or model.
+- `Grok run: TIMEOUT (continuable with a follow-up -c run)` — the verbatim first line already carries the `-c` continuation hint; surface it as-is, never paraphrase it away.
+- `Grok run: FAILED (exit N — generic)` — a transient, generic failure. Relay grok's output verbatim, then retry EXACTLY ONE time automatically — generic class ONLY; auth, rate-limit, and TIMEOUT never retry. Disclose the retry in the output (e.g. "generic failure — retried once automatically").
+Never summarize or paraphrase partial output as a completed result: present a FAILED or TIMEOUT run as a failed run, not a finished one.
+<!-- COURIER-FAILURE-END -->
+- Rescue is write-capable by default: because a mid-write crash could leave a partial edit on disk, a generic-class retry after such a crash could double-apply file edits — the retry disclosure above names this risk for rescue runs.
