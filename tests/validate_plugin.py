@@ -52,8 +52,17 @@ SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 # or a shell redirect targeting either file. The redirect arm requires a
 # path-like prefix ($HOME or ~ immediately after the '>'/'>>') so it does not
 # false-positive on prose like "resolution order: env var > config.toml > default-on".
+# Second alternative (Phase 12 Pitfall 7): a GROK_HOME-relative path has NO
+# `/.grok/` infix before the filename (GROK_HOME already points AT the .grok
+# dir, e.g. `${GROK_HOME:-$HOME/.grok}/auth.json`) — the first alternative's
+# required `/.grok/` substring would never match it, so this arm matches a
+# redirect into `$GROK_HOME`/`${GROK_HOME}`/`${GROK_HOME:-...}` immediately
+# followed by `/(config.toml|auth.json)`, with no `/.grok/` requirement.
 MUTATION_VERB_RE = re.compile(r"sed -i|\btee\b")
-MUTATION_REDIRECT_RE = re.compile(r'>>?\s*[`"\']?(\$\{?HOME\}?|~)["\']?/\.grok/(config\.toml|auth\.json)')
+MUTATION_REDIRECT_RE = re.compile(
+    r'>>?\s*[`"\']?(\$\{?HOME\}?|~)["\']?/\.grok/(config\.toml|auth\.json)'
+    r'|>>?\s*[`"\']?\$(?:GROK_HOME\b|\{GROK_HOME(?::-[^}]*)?\})["\']?/(config\.toml|auth\.json)'
+)
 
 _failures = []  # (tag, message)
 _current_tag = ""
@@ -265,11 +274,26 @@ def check_rescue():
 
 
 def check_setup():
-    """[CMD-04,CMD-12] setup: auth.json existence-only + never-print + review-gate N/A + 4-command ready line."""
+    """[CMD-04,CMD-12] setup: structural auth check + GROK_HOME propagation +
+    schema-correct anchored greps + never-print + review-gate N/A + 4-command
+    ready line (D-05/D-06/D-07, Phase 12)."""
     text = read(cmd_path("setup"))
+    # D-05 (Phase 12): auth check upgraded from bare existence to non-empty +
+    # a structural JSON-parse validity probe (exit-code-only: valid/invalid).
     require(
-        '[ -f "$HOME/.grok/auth.json" ]' in text,
-        "setup.md: auth state must be checked with the existence-only test [ -f \"$HOME/.grok/auth.json\" ]",
+        '[ -s "${GROK_HOME:-$HOME/.grok}/auth.json" ]' in text,
+        "setup.md: auth state must be checked with the non-empty test "
+        '[ -s "${GROK_HOME:-$HOME/.grok}/auth.json" ] (D-05/D-06)',
+    )
+    require(
+        '[ -f "$HOME/.grok/auth.json" ]' not in text,
+        "setup.md: the old bare existence-only test [ -f \"$HOME/.grok/auth.json\" ] "
+        "must be fully replaced by the non-empty + structural-probe form (D-05)",
+    )
+    require(
+        "json.load" in text and "'valid'" in text and "'invalid'" in text,
+        "setup.md: auth state must include a structural JSON-parse validity "
+        "probe (json.load) whose only observable output is valid/invalid (D-05)",
     )
     require(
         "Never print or read the contents of `~/.grok/auth.json`" in text,
@@ -295,6 +319,76 @@ def check_setup():
                 cmd in line,
                 f"setup.md: ready line must name {cmd} (all four delegation commands required)",
             )
+    # D-06 (Phase 12): GROK_HOME propagation — every executable config/auth
+    # path check uses ${GROK_HOME:-$HOME/.grok} (the $HOME-form default,
+    # never the tilde form); the old hardcoded tilde-form existence phrasing
+    # for config.toml is gone; a disclosure line fires only when set.
+    require(
+        "${GROK_HOME:-$HOME/.grok}/auth.json" in text
+        and "${GROK_HOME:-$HOME/.grok}/config.toml" in text,
+        "setup.md: auth.json and config.toml checks must resolve via "
+        "${GROK_HOME:-$HOME/.grok} (D-06)",
+    )
+    require(
+        "if `~/.grok/config.toml` exists" not in text,
+        "setup.md: the old hardcoded 'if `~/.grok/config.toml` exists' phrasing "
+        "must be replaced by the ${GROK_HOME:-$HOME/.grok} form in items 5/8 (D-06)",
+    )
+    require(
+        "GROK_HOME set — using" in text,
+        "setup.md: missing the `GROK_HOME set — using <path>` disclosure line "
+        "(D-06, emitted only when the env var is set)",
+    )
+    # D-07 (Phase 12), item 5 — defaults must target the REAL [models] schema
+    # (default/default_reasoning_effort), not a bare model/effort line that
+    # could match model_api_token or a [model.<id>] override section.
+    require(
+        "[models]" in text and "default_reasoning_effort" in text,
+        "setup.md: item 5 (defaults) must target the real [models] section "
+        "keys default/default_reasoning_effort (D-07)",
+    )
+    require(
+        "grep it for the `model` and `effort` keys" not in text,
+        "setup.md: the old unanchored `model`/`effort` key grep instruction "
+        "must be replaced by the [models]-section-scoped reader (D-07)",
+    )
+    require(
+        not re.search(r"\bgrep\b[^\n]*\bmodel\b", text),
+        "setup.md: no unanchored grep for a bare model key may survive "
+        "(could match model_api_token) (D-07)",
+    )
+    # D-07 (Phase 12), item 8 — telemetry block re-scoped to the real
+    # [features]/[telemetry] layout, single-line-only near trace_upload.
+    # Region-scoped between the item's own marker and the next item, so an
+    # unrelated mention elsewhere in the file cannot satisfy the assertion.
+    telemetry_start = text.find("Local privacy/telemetry overrides")
+    require(
+        telemetry_start != -1,
+        "setup.md: missing the 'Local privacy/telemetry overrides' item",
+    )
+    telemetry_next = text.find("Env-var overrides", telemetry_start) if telemetry_start != -1 else -1
+    telemetry_region = (
+        text[telemetry_start:telemetry_next]
+        if telemetry_start != -1 and telemetry_next != -1
+        else (text[telemetry_start:] if telemetry_start != -1 else "")
+    )
+    require(
+        "`[features]`" in telemetry_region
+        and re.search(r"separate `\[telemetry\]` section", telemetry_region, re.IGNORECASE) is not None,
+        "setup.md: item 8 (telemetry) must state the real schema layout — "
+        "telemetry/feedback under [features], trace_upload under a separate "
+        "[telemetry] section (D-07)",
+    )
+    require(
+        "events_api_key" in telemetry_region,
+        "setup.md: item 8 must name the adjacent credential-shaped "
+        "events_api_key key as the reason context-flag greps are forbidden (D-07/Pitfall 5)",
+    )
+    require(
+        re.search(r"never.{0,20}`-A`/`-B`/`-C`", telemetry_region) is not None,
+        "setup.md: item 8 must explicitly prohibit -A/-B/-C context flags near "
+        "trace_upload (D-07/Pitfall 5)",
+    )
     # Privacy/telemetry posture surface (REQ-02, Phase 09)
     for env_var in (
         "GROK_TELEMETRY_ENABLED",
@@ -513,9 +607,10 @@ def check_result_boundaries():
 
 
 def check_transfer():
-    """[CMD-10] transfer: four-check preflight + interactive-only + experimental disclosures."""
+    """[CMD-10] transfer: preflight checks + GROK_HOME propagation + section-scoped
+    compat.claude grep + interactive-only + experimental disclosures (D-06/D-07, Phase 12)."""
     text = read(cmd_path("transfer"))
-    # Four preflight checks
+    # Preflight checks
     require("command -v grok" in text, "transfer.md: preflight check 1 (binary) missing")
     require("compat.claude" in text, "transfer.md: preflight check 2 (compat flag) missing")
     require(
@@ -527,6 +622,51 @@ def check_transfer():
     require(
         re.search(r"NEVER print JSONL contents", text, re.IGNORECASE),
         "transfer.md: JSONL check must report count/mtime only, never contents",
+    )
+    # D-06 (Phase 12): GROK_HOME propagation — config.toml and resume-claude
+    # skill checks resolve via ${GROK_HOME:-$HOME/.grok}; the Claude session
+    # JSONL path (~/.claude/projects) is a CLAUDE path, unrelated to
+    # GROK_HOME, and must remain unchanged.
+    require(
+        "${GROK_HOME:-$HOME/.grok}/config.toml" in text
+        and "${GROK_HOME:-$HOME/.grok}/skills/resume-claude/" in text,
+        "transfer.md: config.toml and resume-claude skill checks must resolve "
+        "via ${GROK_HOME:-$HOME/.grok} (D-06)",
+    )
+    require(
+        "If `~/.grok/config.toml` exists" not in text,
+        "transfer.md: the old hardcoded 'If `~/.grok/config.toml` exists' "
+        "phrasing must be replaced by the ${GROK_HOME:-$HOME/.grok} form (D-06)",
+    )
+    require(
+        "~/.grok/skills/resume-claude/" not in text,
+        "transfer.md: the old hardcoded ~/.grok/skills/resume-claude/ path "
+        "must be replaced by ${GROK_HOME:-$HOME/.grok}/skills/resume-claude/ (D-06)",
+    )
+    require(
+        "~/.claude/projects" in text,
+        "transfer.md: the Claude session JSONL path (~/.claude/projects, a "
+        "CLAUDE path unrelated to GROK_HOME) must remain unchanged",
+    )
+    require(
+        "GROK_HOME set — using" in text,
+        "transfer.md: missing the `GROK_HOME set — using <path>` disclosure "
+        "line (D-06, emitted only when the env var is set)",
+    )
+    # D-07 (Phase 12): the [compat.claude] `sessions` grep must be
+    # section-scoped (a state-machine reader tracking the [compat.claude]
+    # boundary), not a bare `grep sessions` that could match an unrelated
+    # `sessions` token outside that block.
+    require(
+        "in_section = (s == '[compat.claude]')" in text,
+        "transfer.md: the [compat.claude] sessions check must be "
+        "section-scoped (state-machine reader tracking the [compat.claude] "
+        "block boundary), not a bare unscoped grep (D-07)",
+    )
+    require(
+        "grep the `sessions` key (never dump the whole file)" not in text,
+        "transfer.md: the old unscoped 'grep the `sessions` key' instruction "
+        "must be replaced by the section-scoped reader (D-07)",
     )
     # Disclosures
     require(
