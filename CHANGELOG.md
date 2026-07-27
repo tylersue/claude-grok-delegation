@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.5 — 2026-07-27
+
+Command robustness (phase 12; findings #4/#5/#6) plus a courier-failure handling extension: session-result retrieval, setup/transfer path handling, and the review commands' git edge cases are all hardened, and every courier consumer now classifies failures instead of conflating them.
+
+- `/grok:result` now attempts native `grok export` as the PRIMARY retrieval path, with the existing on-disk transcript locate+parse surviving verbatim as a disclosed FALLBACK on any export failure; session ids are validated against the strict version-agnostic 8-4-4-4-12 lowercase-hex UUID grammar (replacing the old loose "no `/` or `..`" check) before any path or glob use, on both argument-supplied and list-derived ids; a canonicalize-and-prefix-verify containment check runs before ANY read (refuse-and-report, read nothing, on escape); and an always-on `Source:` line discloses which retrieval path fired (finding #4)
+- `/grok:setup` and `/grok:transfer` honor `GROK_HOME` everywhere instead of the tilde form that silently fails to expand when double-quoted; `/grok:setup` validates auth structurally (non-empty + JSON-parse validity, zero content exposure) and anchors its config greps to the real `[models]`/`[telemetry]` schema so they can no longer match or print a credential-shaped key (finding #5)
+- `/grok:review` and `/grok:adversarial-review` now define explicit behavior for not-a-repo, unborn HEAD, no default branch, bad/ambiguous `--base`, `merge-base` failure, invalid `--scope`, and empty-diff vs. git-error, closing the git-state edge cases from finding #6
+- All four courier consumers (`/grok:review`, `/grok:adversarial-review`, `/grok:rescue`, and the `delegate` skill) gained per-class failure handling — auth / rate-limit / TIMEOUT / generic — with a single generic-class-only auto-retry, replacing the previous conflated auth-or-rate-limit handling
+- `tests/validate_plugin.py` gained mutation-proven coverage for all of the above, including a new `check_courier_failure_sync()` check group enforcing N=4 byte-identical fenced-block sync across the four courier-failure consumers
+
 ## 0.3.4 — 2026-07-25
 
 Read-path-confinement gap closure (follow-up to 0.3.3 / finding #2). Post-release review and phase verification found a critical fail-closed contradiction in the shipped 0.3.3 read-only path, plus validator-anchor and disclosure gaps; all are fixed here.
