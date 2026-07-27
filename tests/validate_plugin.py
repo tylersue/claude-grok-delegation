@@ -329,11 +329,15 @@ def check_setup():
 
 
 def check_result_boundaries():
-    """[CMD-09] result: four boundary sentences + locate chain + tail extraction + grok -r degradation."""
+    """[CMD-09] result: four boundary sentences + locate chain + tail extraction
+    + grok -r degradation + UUID grammar + containment + export-primary
+    retrieval + Source: line (D-01..D-04, Phase 12)."""
     text = read(cmd_path("result"))
     require(
-        "reads ONLY inside `${GROK_HOME:-~/.grok}/sessions/`" in text,
-        "result.md: missing the sessions-tree-only boundary sentence",
+        "reads ONLY inside `${GROK_HOME:-$HOME/.grok}/sessions/`" in text,
+        "result.md: missing the sessions-tree-only boundary sentence ($HOME "
+        "form, not the tilde form which silently fails to expand when "
+        "double-quoted — Pitfall 3)",
     )
     require(
         "Never read `~/.grok/auth.json`" in text,
@@ -361,11 +365,74 @@ def check_result_boundaries():
         "-r <session-id>" in text,
         "result.md: must degrade to advising `grok -r <session-id>`",
     )
-    # Round-3 hardening (review findings #1-#3): validation, gating, cwd binding
+    # D-03 (Phase 12): strict 8-4-4-4-12 UUID grammar replaces the old loose
+    # "look like a UUID / no `/` or `..`" check. Region-scoped to the
+    # "Session-id resolution:" section (between its own marker and the next
+    # top-level section) so the assertion cannot be satisfied by unrelated
+    # prose elsewhere in the file.
+    id_start = text.find("Session-id resolution:")
+    require(id_start != -1, "result.md: missing the 'Session-id resolution:' section marker")
+    id_next = text.find("Locating the session directory", id_start) if id_start != -1 else -1
+    id_region = (
+        text[id_start:id_next]
+        if id_start != -1 and id_next != -1
+        else (text[id_start:] if id_start != -1 else "")
+    )
     require(
-        "look like a UUID" in text and "before any path or glob use" in text,
-        "result.md: missing the session-id format-validation rule "
-        "(UUID shape, checked before any path or glob use)",
+        "8-4-4-4-12" in id_region and "before any path or glob use" in id_region,
+        "result.md: missing the strict 8-4-4-4-12 UUID grammar description in "
+        "the id-validation rule (checked before any path or glob use)",
+    )
+    require(
+        re.search(r"case-normal\w*", id_region, re.IGNORECASE) is not None,
+        "result.md: id-validation rule must state case-normalization "
+        "(bare 'lowercase' is not a sufficient anchor — it also describes "
+        "the hex-digit shape and would not catch a mutation removing the "
+        "case-normalization behavior)",
+    )
+    require(
+        "from the arguments" in id_region and "sessions list -n 1` lookup" in id_region,
+        "result.md: id-validation rule must apply to BOTH argument-supplied "
+        "ids and the default `sessions list -n 1` lookup",
+    )
+    require(
+        "no `/` or `..`" not in text,
+        "result.md: the old loose id-validation phrase (no `/` or `..`) must "
+        "be fully replaced by the strict UUID grammar (D-03)",
+    )
+    # D-02 (Phase 12): containment check before any read. Region-scoped to the
+    # "Containment check" section (between its own marker and the "Metadata
+    # (always read...)" section that follows it).
+    cc_start = text.find("Containment check")
+    require(cc_start != -1, "result.md: missing the 'Containment check' section")
+    cc_next = text.find("Metadata (always read", cc_start) if cc_start != -1 else -1
+    cc_region = (
+        text[cc_start:cc_next]
+        if cc_start != -1 and cc_next != -1
+        else (text[cc_start:] if cc_start != -1 else "")
+    )
+    require(
+        re.search(r"canonicali[sz]e|realpath|resolve", cc_region, re.IGNORECASE) is not None
+        and "${GROK_HOME:-$HOME/.grok}/sessions/" in cc_region,
+        "result.md: containment check must canonicalize/resolve the located "
+        "session dir and verify it is inside "
+        "${GROK_HOME:-$HOME/.grok}/sessions/ before any read",
+    )
+    require(
+        "before ANY read" in cc_region,
+        "result.md: containment check must explicitly run before ANY file read",
+    )
+    require(
+        "ESCAPED" in cc_region
+        and "read NOTHING" in cc_region
+        and "grok -r <session-id>" in cc_region,
+        "result.md: containment check must refuse-and-report on escape — read "
+        "nothing and point at `grok -r <session-id>`",
+    )
+    require(
+        "NOT a degrade case" in cc_region,
+        "result.md: containment check failure must be explicitly stated as "
+        "NOT a degrade case (it is the confidentiality boundary itself)",
     )
     require(
         "sibling or parent worktree" in text,
@@ -376,6 +443,72 @@ def check_result_boundaries():
         "same Bash call as the `cd <repo>`" in text,
         "result.md: the URL-encoding locate one-liner must be bound to the repo "
         "cwd (same Bash call as the `cd <repo>`)",
+    )
+    # D-01 (Phase 12): summary.json metadata is always-on, independent of the
+    # export-vs-fallback branch. Region-scoped to the "Metadata (always
+    # read...)" section (between its own marker and "Retrieving the final
+    # output").
+    meta_start = text.find("Metadata (always read")
+    require(meta_start != -1, "result.md: missing the 'Metadata (always read...)' section marker")
+    meta_next = text.find("Retrieving the final output", meta_start) if meta_start != -1 else -1
+    meta_region = (
+        text[meta_start:meta_next]
+        if meta_start != -1 and meta_next != -1
+        else (text[meta_start:] if meta_start != -1 else "")
+    )
+    require(
+        "summary.json" in meta_region
+        and "not gated by the PRIMARY/FALLBACK branch" in meta_region
+        and "it always runs" in meta_region,
+        "result.md: summary.json metadata read must be described as always-run "
+        "and NOT gated by which retrieval branch (export vs. fallback) fires "
+        "(the section-header phrase 'regardless of' alone is NOT a sufficient "
+        "anchor — it also appears in the section title, independent of the "
+        "body sentence)",
+    )
+    # D-01/D-04 (Phase 12): export-primary retrieval, LAST-`## Assistant`
+    # extraction, and the Source: disclosure line. Region-scoped to the
+    # "Retrieving the final output" section (between its own marker and
+    # "Graceful degradation:").
+    ret_start = meta_next if meta_next != -1 else text.find("Retrieving the final output")
+    require(ret_start != -1, "result.md: missing the 'Retrieving the final output' section marker")
+    ret_next = text.find("Graceful degradation:", ret_start) if ret_start != -1 else -1
+    ret_region = (
+        text[ret_start:ret_next]
+        if ret_start != -1 and ret_next != -1
+        else (text[ret_start:] if ret_start != -1 else "")
+    )
+    require(
+        re.search(r"PRIMARY.{0,200}grok export", ret_region, re.DOTALL) is not None,
+        "result.md: `grok export` must be named as the PRIMARY/first retrieval "
+        "attempt",
+    )
+    require(
+        re.search(r"FALLBACK.{0,100}triggered on ANY export failure", ret_region, re.DOTALL)
+        is not None,
+        "result.md: the on-disk locate+parse must be described as the FALLBACK "
+        "branch, triggered on ANY export failure",
+    )
+    require(
+        "LAST `## Assistant`" in ret_region,
+        "result.md: final-output extraction must take the LAST `## Assistant` "
+        "section of the export output (export returns the FULL conversation, "
+        "Pitfall 2)",
+    )
+    require(
+        "Source: grok export" in ret_region,
+        "result.md: missing the `Source: grok export` disclosure form",
+    )
+    require(
+        "Source: on-disk transcript (export unavailable —" in ret_region,
+        "result.md: missing the `Source: on-disk transcript (export "
+        "unavailable — ...)` disclosure form",
+    )
+    require(
+        "A missing `Source:` line is itself a defect" in ret_region,
+        "result.md: absence of the `Source:` line must be explicitly stated as "
+        "itself a defect (absence-detectable, per the `Grok run:`/`Sandbox:` "
+        "convention)",
     )
 
 
