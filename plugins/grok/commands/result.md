@@ -1,11 +1,11 @@
 ---
-description: Show a finished Grok session's output from its on-disk transcript
+description: Show a finished Grok session's output (native export, on-disk transcript fallback)
 argument-hint: '[session-id]'
 disable-model-invocation: true
 allowed-tools: Bash, Read
 ---
 
-Print a finished Grok session's metadata and final output by reading its on-disk transcript — grok has no `sessions show` subcommand, so this reads the documented session store directly.
+Print a finished Grok session's metadata and final output — primarily via grok's own `export` subcommand, falling back to a direct read of the on-disk transcript when export is unavailable or fails (grok has no `sessions show` subcommand, so the fallback reads the documented session store directly).
 
 Raw slash-command arguments:
 `$ARGUMENTS`
@@ -44,15 +44,19 @@ Containment check (before ANY read — runs every time the session dir above is 
   ```
 - On ESCAPED (e.g. a symlinked group or session directory pointing outside the sessions tree): refuse and stop — read NOTHING. Name the violation plainly ("session directory resolves outside the sessions tree") and point the user at `grok -r <session-id>` as the manual fallback. A failed containment check is NOT a degrade case — it is the confidentiality boundary itself, so it never silently continues.
 
-What to print:
-- From `summary.json` (plain JSON — the Read tool or a python3 one-liner): generated title and session summary, created/updated timestamps, model id, message counts, and agent name / parent session id when present.
-- From `updates.jsonl`: the final assistant message(s). The file can be large — read only its TAIL (e.g. `tail -n 200 updates.jsonl`), then extract the text of the last agent/assistant message event(s); each line is a self-contained JSON event. Never load the whole file.
+Metadata (always read, regardless of which retrieval branch below fires):
+- From `summary.json` (plain JSON — the Read tool or a python3 one-liner), through the containment check above: generated title and session summary, created/updated timestamps, model id, message counts, and agent name / parent session id when present. `grok export` output carries NO session-level metadata, so this read is not gated by the PRIMARY/FALLBACK branch below — it always runs.
+
+Retrieving the final output (export-primary, on-disk fallback):
+- PRIMARY: attempt `grok export "$SESSION_ID"` first. On success (exit 0, non-empty stdout), the final output is the text after the LAST `## Assistant` heading, up to the next `## ` heading or end-of-file — the export prints the FULL conversation, not just the last turn, so this extraction is required. If the last section in the export is `## Tools` with no trailing `## Assistant` section, treat the session as unfinished and say so plainly.
+- FALLBACK (triggered on ANY export failure — grok binary missing, an unknown/missing `export` subcommand, a nonzero exit, or empty/unusable output; trigger on the failure itself, not a specific error-text match): fall back to `updates.jsonl` in the session dir located and containment-checked above — the final assistant message(s). The file can be large — read only its TAIL (e.g. `tail -n 200 updates.jsonl`), then extract the text of the last agent/assistant message event(s); each line is a self-contained JSON event. Never load the whole file.
+- Report exactly one `Source:` line in the output header, from a fixed vocabulary: `Source: grok export` when the PRIMARY branch produced the content, or `Source: on-disk transcript (export unavailable — <reason>)` when the FALLBACK branch fired, with `<reason>` one of: `export subcommand not found`, `export exited nonzero`, `export output empty`. A missing `Source:` line is itself a defect.
 
 Graceful degradation:
 - The on-disk layout is documented but could change between grok versions. If the group dir cannot be found, the session dir or its files are missing, or the tail events do not match expectations — stop digging and advise the retrieval fallback instead: the user can run `grok -r <session-id>` to resume the session interactively and re-ask for the result.
 - Never guess, never reconstruct output, and never widen the file search beyond the sessions tree.
 
 Output rules:
-- Present the metadata as a short header, then the final assistant output clearly attributed: "Grok's result (session <id>): ...".
+- Present the metadata as a short header — including the `Source:` line — then the final assistant output clearly attributed: "Grok's result (session <id>): ...".
 - If the session looks unfinished (recent update, no terminal assistant message), say so plainly.
 - If the grok binary is missing for the default-id lookup, or anything else about the local grok install looks broken, point the user at `/grok:setup`.
