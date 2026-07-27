@@ -1514,6 +1514,143 @@ def check_flag_grammar_sync():
     )
 
 
+def check_courier_failure_sync():
+    """[12: courier-failure sync] D-12..D-15: courier-failure consumption-contract
+    block byte-identical across all four consumers (review.md,
+    adversarial-review.md, rescue.md, SKILL.md); per-class tokens
+    (auth->/grok:setup, rate-limit-not-auth, TIMEOUT -c hint, generic verbatim
+    + generic-only retry) present in the canonical block; the old conflated
+    auth-or-rate-limit->/grok:setup phrasing never reappears; rescue.md's
+    write-capable double-apply disclosure lives outside the fenced block."""
+    marker_re = re.compile(
+        r"<!-- COURIER-FAILURE-START -->(.*?)<!-- COURIER-FAILURE-END -->", re.DOTALL
+    )
+
+    files = [
+        ("review.md", cmd_path("review")),
+        ("adversarial-review.md", cmd_path("adversarial-review")),
+        ("rescue.md", cmd_path("rescue")),
+        ("SKILL.md", SKILL_FILE),
+    ]
+
+    texts = {}
+    blocks = {}
+    for label, path in files:
+        text = read(path)
+        texts[label] = text
+        m = marker_re.search(text)
+        if not require(
+            m is not None,
+            f"{label}: missing the <!-- COURIER-FAILURE-START --> / "
+            "<!-- COURIER-FAILURE-END --> fenced courier-failure block",
+        ):
+            blocks[label] = None
+            continue
+        blocks[label] = m.group(1)
+
+    canonical_label = files[0][0]
+    canonical_raw = blocks.get(canonical_label)
+    if canonical_raw is None:
+        return  # canonical block itself missing; nothing further to compare
+    canonical = canonical_raw.strip()
+
+    # Byte-identical sync: compare file[1..3] against file[0] (cheaper than
+    # full pairwise, same guarantee per Open Question 3).
+    for label, _ in files[1:]:
+        block = blocks.get(label)
+        if block is None:
+            continue
+        require(
+            block.strip() == canonical,
+            f"{label}: courier-failure block must be byte-identical to "
+            f"{canonical_label}'s (D-15 sync)",
+        )
+
+    # --- Per-class tokens within the canonical block (file[0]) ---
+    auth_line = next((l for l in canonical.splitlines() if "auth)" in l), "")
+    require(
+        bool(auth_line) and "point the user at" in auth_line and "/grok:setup" in auth_line,
+        f"{canonical_label}: the auth rule must point the user at /grok:setup",
+    )
+
+    rate_limit_line = next((l for l in canonical.splitlines() if "rate limit)" in l), "")
+    require(
+        bool(rate_limit_line) and "NOT an authentication failure" in rate_limit_line,
+        f"{canonical_label}: the rate-limit rule must state explicitly it is "
+        "NOT an authentication failure",
+    )
+    require(
+        bool(rate_limit_line) and "point the user at" not in rate_limit_line,
+        f"{canonical_label}: the rate-limit rule must not affirmatively "
+        "point the user at /grok:setup (D-13 forbids this for rate-limit)",
+    )
+
+    timeout_line = next((l for l in canonical.splitlines() if "TIMEOUT" in l), "")
+    require(
+        bool(timeout_line) and "-c" in timeout_line,
+        f"{canonical_label}: the TIMEOUT rule must reference the verbatim "
+        "-c continuation hint",
+    )
+
+    generic_line = next((l for l in canonical.splitlines() if "generic)" in l), "")
+    require(
+        bool(generic_line) and "verbatim" in generic_line.lower(),
+        f"{canonical_label}: the generic rule must relay grok's output verbatim",
+    )
+    require(
+        bool(generic_line) and re.search(r"retr(y|ied)", generic_line, re.IGNORECASE) is not None,
+        f"{canonical_label}: the generic rule must include a single "
+        "auto-retry",
+    )
+    require(
+        bool(generic_line)
+        and re.search(r"generic class only|generic[- ]only", generic_line, re.IGNORECASE) is not None,
+        f"{canonical_label}: the auto-retry must be scoped explicitly to the "
+        "generic class ONLY (D-14)",
+    )
+    require(
+        bool(generic_line) and re.search(r"disclos", generic_line, re.IGNORECASE) is not None,
+        f"{canonical_label}: the generic-only retry must be observably "
+        "disclosed in output (D-14)",
+    )
+
+    # --- Negative anchor: the old conflated phrasing must never reappear ---
+    for label, text in texts.items():
+        require(
+            "authentication problem, or a rate limit" not in text,
+            f"{label}: the old conflated 'authentication problem, or a rate "
+            "limit' -> /grok:setup phrasing must not reappear (Pitfall 8 "
+            "regression)",
+        )
+        require(
+            "authentication or rate-limit problem" not in text,
+            f"{label}: the old conflated 'authentication or rate-limit "
+            "problem' -> /grok:setup phrasing must not reappear (Pitfall 8 "
+            "regression)",
+        )
+
+    # --- rescue.md write-capable double-apply disclosure, OUTSIDE the fence ---
+    rescue_text = texts["rescue.md"]
+    rescue_match = marker_re.search(rescue_text)
+    outside_rescue = (
+        rescue_text[: rescue_match.start()] + rescue_text[rescue_match.end():]
+        if rescue_match
+        else rescue_text
+    )
+    require(
+        "double-apply" in outside_rescue and "write-capable" in outside_rescue,
+        "rescue.md: missing the write-capable double-apply retry-risk "
+        "disclosure sentence OUTSIDE the fenced COURIER-FAILURE block",
+    )
+    if rescue_match:
+        require(
+            "double-apply" not in rescue_match.group(1),
+            "rescue.md: the write-capable double-apply disclosure must live "
+            "OUTSIDE the fenced block, or the four fenced blocks would no "
+            "longer be byte-identical",
+        )
+
+
 def check_sandbox_confinement():
     """[11] --sandbox strict/workspace flags, region-scoped Sandbox: disclosure line, preflight-rejection retry signatures, cross-file --sandbox strict sync."""
     agent_text = read(AGENT_FILE)
@@ -1765,6 +1902,7 @@ CHECKS = [
     ("D-04/D-05/D-06", check_failure_classification_and_status_line),
     ("D-07/D-08", check_cleanup_guarantees),
     ("D-09..D-14", check_flag_grammar_sync),
+    ("12: courier-failure sync", check_courier_failure_sync),
     ("11: sandbox confinement", check_sandbox_confinement),
     ("11: sandbox docs/sync", check_sandbox_boundary_docs),
 ]
