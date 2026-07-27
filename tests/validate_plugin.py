@@ -607,9 +607,10 @@ def check_result_boundaries():
 
 
 def check_transfer():
-    """[CMD-10] transfer: four-check preflight + interactive-only + experimental disclosures."""
+    """[CMD-10] transfer: preflight checks + GROK_HOME propagation + section-scoped
+    compat.claude grep + interactive-only + experimental disclosures (D-06/D-07, Phase 12)."""
     text = read(cmd_path("transfer"))
-    # Four preflight checks
+    # Preflight checks
     require("command -v grok" in text, "transfer.md: preflight check 1 (binary) missing")
     require("compat.claude" in text, "transfer.md: preflight check 2 (compat flag) missing")
     require(
@@ -621,6 +622,51 @@ def check_transfer():
     require(
         re.search(r"NEVER print JSONL contents", text, re.IGNORECASE),
         "transfer.md: JSONL check must report count/mtime only, never contents",
+    )
+    # D-06 (Phase 12): GROK_HOME propagation — config.toml and resume-claude
+    # skill checks resolve via ${GROK_HOME:-$HOME/.grok}; the Claude session
+    # JSONL path (~/.claude/projects) is a CLAUDE path, unrelated to
+    # GROK_HOME, and must remain unchanged.
+    require(
+        "${GROK_HOME:-$HOME/.grok}/config.toml" in text
+        and "${GROK_HOME:-$HOME/.grok}/skills/resume-claude/" in text,
+        "transfer.md: config.toml and resume-claude skill checks must resolve "
+        "via ${GROK_HOME:-$HOME/.grok} (D-06)",
+    )
+    require(
+        "If `~/.grok/config.toml` exists" not in text,
+        "transfer.md: the old hardcoded 'If `~/.grok/config.toml` exists' "
+        "phrasing must be replaced by the ${GROK_HOME:-$HOME/.grok} form (D-06)",
+    )
+    require(
+        "~/.grok/skills/resume-claude/" not in text,
+        "transfer.md: the old hardcoded ~/.grok/skills/resume-claude/ path "
+        "must be replaced by ${GROK_HOME:-$HOME/.grok}/skills/resume-claude/ (D-06)",
+    )
+    require(
+        "~/.claude/projects" in text,
+        "transfer.md: the Claude session JSONL path (~/.claude/projects, a "
+        "CLAUDE path unrelated to GROK_HOME) must remain unchanged",
+    )
+    require(
+        "GROK_HOME set — using" in text,
+        "transfer.md: missing the `GROK_HOME set — using <path>` disclosure "
+        "line (D-06, emitted only when the env var is set)",
+    )
+    # D-07 (Phase 12): the [compat.claude] `sessions` grep must be
+    # section-scoped (a state-machine reader tracking the [compat.claude]
+    # boundary), not a bare `grep sessions` that could match an unrelated
+    # `sessions` token outside that block.
+    require(
+        "in_section = (s == '[compat.claude]')" in text,
+        "transfer.md: the [compat.claude] sessions check must be "
+        "section-scoped (state-machine reader tracking the [compat.claude] "
+        "block boundary), not a bare unscoped grep (D-07)",
+    )
+    require(
+        "grep the `sessions` key (never dump the whole file)" not in text,
+        "transfer.md: the old unscoped 'grep the `sessions` key' instruction "
+        "must be replaced by the section-scoped reader (D-07)",
     )
     # Disclosures
     require(
