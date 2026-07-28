@@ -110,6 +110,14 @@ None - no external service configuration required.
 - `python3 tests/validate_plugin.py` is green 22/22 with no outstanding mutation-proof gaps for this control.
 - Recommended next step: re-run phase 12 verification (`/gsd:verify-phase 12` or equivalent) to confirm 27/27 truths now verified, then the orchestrator can close out the phase. WR-01..WR-04 (non-blocking warnings from 12-REVIEW.md) remain deferred/out of scope for this plan, as declared.
 
+## Self-Check: PASSED
+
+- FOUND: plugins/grok/commands/result.md
+- FOUND: tests/validate_plugin.py
+- FOUND: .planning/phases/12-command-robustness/12-06-SUMMARY.md
+- FOUND: commit 110bc87 (fix(12-06): close D-02 leaf-file containment gap in /grok:result (CR-01))
+- FOUND: commit 7ae77cd (docs(12-06): add plan 06 SUMMARY)
+
 ---
 *Phase: 12-command-robustness*
 *Completed: 2026-07-28*
