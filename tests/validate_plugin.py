@@ -743,6 +743,51 @@ def check_result_boundaries():
         "itself a defect (absence-detectable, per the `Grok run:`/`Sandbox:` "
         "convention)",
     )
+    # D-02 (leaf, Phase 12 gap closure / 12-REVIEW.md CR-01): per-file (leaf)
+    # containment. The directory-level containment check above is necessary
+    # but not sufficient — a session directory that itself resolves inside
+    # sessions/ can still contain a symlinked leaf (summary.json,
+    # updates.jsonl, or a Fallback-1 .cwd candidate) that escapes the
+    # boundary via the Read tool / python3 open() / tail, all of which
+    # follow symlinks. Region-scope the shared "before it is opened" marker
+    # phrase to each of the three leaf-read regions independently — the
+    # Locating/Fallback-1 region, the Metadata region, and the Retrieving
+    # region — so an unrelated mention elsewhere in the file cannot satisfy
+    # this and each leaf's own gate must be present at its own read site.
+    loc_start = text.find("Locating the session directory")
+    require(loc_start != -1, "result.md: missing the 'Locating the session directory' section marker")
+    loc_next = cc_start if cc_start != -1 else -1
+    loc_region = (
+        text[loc_start:loc_next]
+        if loc_start != -1 and loc_next != -1
+        else (text[loc_start:] if loc_start != -1 else "")
+    )
+    require(
+        "before it is opened" in loc_region,
+        "result.md: the Fallback-1 `.cwd` read happens before the "
+        "directory-level containment check runs at all — each candidate "
+        "`.cwd` path must be per-file (leaf) canonicalized and "
+        "prefix-verified immediately before it is opened (D-02 leaf gap)",
+    )
+    require(
+        "before it is opened" in meta_region,
+        "result.md: the summary.json metadata read must be per-file (leaf) "
+        "canonicalized and prefix-verified immediately before it is opened, "
+        "not only the containing directory (D-02 leaf gap)",
+    )
+    require(
+        "before it is opened" in ret_region,
+        "result.md: the updates.jsonl FALLBACK read must be per-file (leaf) "
+        "canonicalized and prefix-verified immediately before it is opened, "
+        "not only the containing directory (D-02 leaf gap)",
+    )
+    require(
+        "session file resolves outside the sessions tree" in cc_region,
+        "result.md: a per-file (leaf) containment failure must be named "
+        "distinctly from the directory-level failure (\"session file "
+        "resolves outside the sessions tree\") and refuse-and-report "
+        "identically — read NOTHING, NOT a degrade case",
+    )
 
 
 def check_transfer():
