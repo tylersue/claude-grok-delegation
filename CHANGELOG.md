@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.6 — 2026-07-29
+
+CI depth (phase 13; finding #8): the validation CI is now load-bearing — a failing check actually reddens CI instead of passing advisorily — with value-level enforcement of the frontmatter tool-grant surface, a workflow anchor against silent regression, and a live end-to-end red-run proof on real GitHub Actions.
+
+- The `claude-validate` job is now a hard gate: `continue-on-error` removed and `--strict` added, so a failing `claude plugin validate` reddens CI instead of being silently swallowed (finding #8, REQ-06)
+- `manifest-sanity`'s 47-line inline Python heredoc — a drifting duplicate of a subset of the real suite — is gone; the job now runs the full `tests/validate_plugin.py` as the single source of truth
+- `tests/validate_plugin.py` extended from presence-only to VALUE-level enforcement: a golden exact-match registry for all 7 commands' `allowed-tools` frontmatter, a golden lock on the agent's `tools`/`model` values, and closed frontmatter key sets per file type — a misspelled or widened tool grant now fails CI (22 → 24 mutation-proven check groups)
+- New `check_workflow_hardening()` anchor reads `.github/workflows/validate.yml` as plain text and asserts its three structural invariants (no `continue-on-error` anywhere, both job keys present, full-suite run step intact), locking CI against a silent regression to advisory mode (25 groups total)
+- The hardened wiring was proven live end-to-end: a deliberately-broken throwaway-branch push reddened `manifest-sanity` on real GitHub Actions (`claude-validate` stayed green — expected, the jobs read disjoint files), then the branch was deleted
+- CONTRIBUTING.md now names the two CI check contexts (`manifest-sanity`, `claude-validate`) contributors are expected to keep green
+
 ## 0.3.5 — 2026-07-27
 
 Command robustness (phase 12; findings #4/#5/#6) plus a courier-failure handling extension: session-result retrieval, setup/transfer path handling, and the review commands' git edge cases are all hardened, and every courier consumer now classifies failures instead of conflating them.
