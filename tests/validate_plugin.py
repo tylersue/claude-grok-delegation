@@ -2022,28 +2022,61 @@ def check_closed_key_sets():
 
 def check_workflow_hardening():
     """[D-14] validate.yml: no continue-on-error anywhere, both required job
-    keys present, full-suite step intact — a regression to advisory-mode CI
-    must fail locally and in CI."""
+    keys present, full-suite step intact and region-scoped to the
+    manifest-sanity job with no if: guard on that step — a regression to
+    advisory-mode CI must fail locally and in CI."""
     text = read(WORKFLOW_FILE)
     require(
         "continue-on-error" not in text,
         "validate.yml: must not contain continue-on-error anywhere — a "
         "regression to advisory-mode CI must fail locally and in CI (D-14)",
     )
+    ms_start = re.search(r"^\s*manifest-sanity:\s*$", text, re.MULTILINE)
+    cv_start = re.search(r"^\s*claude-validate:\s*$", text, re.MULTILINE)
     require(
-        re.search(r"^\s*manifest-sanity:\s*$", text, re.MULTILINE) is not None,
+        ms_start is not None,
         "validate.yml: missing the 'manifest-sanity' job (required status "
         "check name) (D-14)",
     )
     require(
-        re.search(r"^\s*claude-validate:\s*$", text, re.MULTILINE) is not None,
+        cv_start is not None,
         "validate.yml: missing the 'claude-validate' job (required status "
         "check name) (D-14)",
     )
+    # Region-scoped to the manifest-sanity job body — NOT a whole-file
+    # substring check: the rest of this file goes out of its way to
+    # region-scope structural assertions (10-08 CR-01 lesson, "region-
+    # scoping is the point") so a mutation that moves this step under the
+    # wrong job can't hide behind an unrelated surviving substring
+    # elsewhere in the file.
+    ms_region = (
+        text[ms_start.end():cv_start.start()] if ms_start and cv_start else ""
+    )
     require(
-        "python3 tests/validate_plugin.py" in text,
+        "python3 tests/validate_plugin.py" in ms_region,
         "validate.yml: the full-suite step (python3 tests/validate_plugin.py) "
-        "must remain intact (D-14)",
+        "must run inside the manifest-sanity job — region-scoped, not a "
+        "whole-file check (D-14)",
+    )
+    # Further region-scope to the individual step block (bounded by the
+    # nearest preceding/following '- name:'/'- uses:' step markers) so a
+    # step-level if: guard that would silently skip the full-suite run is
+    # caught, not shadowed by an if: on some unrelated step in the job.
+    step_idx = ms_region.find("python3 tests/validate_plugin.py")
+    step_markers = [
+        m.start()
+        for m in re.finditer(r"^\s*- (name|uses):", ms_region, re.MULTILINE)
+    ]
+    prior_markers = [m for m in step_markers if m <= step_idx]
+    later_markers = [m for m in step_markers if m > step_idx]
+    step_start = prior_markers[-1] if prior_markers else 0
+    step_end = later_markers[0] if later_markers else len(ms_region)
+    step_block = ms_region[step_start:step_end]
+    require(
+        re.search(r"^\s*if:", step_block, re.MULTILINE) is None,
+        "validate.yml: the full-suite step must not carry an if: guard — "
+        "conditionally skipping it is a silent regression to advisory-mode "
+        "CI (D-14)",
     )
 
 
