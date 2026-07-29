@@ -62,6 +62,18 @@ ALLOWED_TOOLS_GOLDEN = {
     "transfer": "Bash, Read",
 }
 
+# 13: D-11 closed frontmatter key set per file type — intentionally scoped to
+# this plugin's CURRENT, intentional usage, not Claude Code's full documented
+# frontmatter surface (commands may also carry arguments/disallowed-tools/
+# model/effort/context/agent/background/hooks/paths/shell/user-invocable/
+# when_to_use; agents may also carry effort/maxTurns/disallowedTools/skills/
+# memory/background/isolation — none of this plugin's files use any of
+# those). Adopting a legitimate, Anthropic-documented field for this plugin
+# means deliberately extending the set below — that is by design, not a bug.
+COMMAND_ALLOWED_KEYS = {"description", "argument-hint", "allowed-tools", "disable-model-invocation"}
+AGENT_ALLOWED_KEYS = {"name", "description", "model", "tools"}
+SKILL_ALLOWED_KEYS = {"name", "description"}
+
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 # T-09-02 residual: no line may mutate config.toml/auth.json via sed -i, tee,
@@ -1968,6 +1980,43 @@ def check_agent_skill_frontmatter():
         require(fm.get("name") == "delegate", f"SKILL.md: skill name must be 'delegate', found {fm.get('name')!r}")
 
 
+def check_closed_key_sets():
+    """[D-11] closed frontmatter key set per file type — any undeclared key
+    fails CI (catches typo'd extra keys Claude Code silently ignores at
+    runtime, e.g. disable-model-invocations with a trailing s)."""
+    for name in ALL_COMMANDS:
+        fm, err = parse_frontmatter(cmd_path(name))
+        if err:
+            fail(err)
+            continue
+        extra = set(fm.keys()) - COMMAND_ALLOWED_KEYS
+        require(
+            not extra,
+            f"{name}.md: undeclared frontmatter key(s) {extra} "
+            "(D-11 closed key set — adopting a new field means touching this registry)",
+        )
+    fm, err = parse_frontmatter(AGENT_FILE)
+    if err:
+        fail(err)
+    else:
+        extra = set(fm.keys()) - AGENT_ALLOWED_KEYS
+        require(
+            not extra,
+            f"grok-worker.md: undeclared frontmatter key(s) {extra} "
+            "(D-11 closed key set — adopting a new field means touching this registry)",
+        )
+    fm, err = parse_frontmatter(SKILL_FILE)
+    if err:
+        fail(err)
+    else:
+        extra = set(fm.keys()) - SKILL_ALLOWED_KEYS
+        require(
+            not extra,
+            f"SKILL.md: undeclared frontmatter key(s) {extra} "
+            "(D-11 closed key set — adopting a new field means touching this registry)",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -1989,6 +2038,7 @@ CHECKS = [
     ("CMD-06,CMD-14", check_changelog),
     ("05/06 runtime-free", check_runtime_free),
     ("agent/skill guard", check_agent_skill_frontmatter),
+    ("13: D-11", check_closed_key_sets),
     ("D-01/D-02/D-03", check_prompt_file_write_mechanism),
     ("D-04/D-05/D-06", check_failure_classification_and_status_line),
     ("D-07/D-08", check_cleanup_guarantees),
