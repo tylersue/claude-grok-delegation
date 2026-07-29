@@ -46,6 +46,34 @@ NO_DMI_COMMANDS = ["rescue", "setup"]
 ARG_COMMANDS = ["review", "adversarial-review", "rescue", "status", "result"]
 NO_ARG_COMMANDS = ["setup", "transfer"]
 
+# 13: D-09 golden exact-match allowed-tools per command (ground-truth
+# re-verified directly against HEAD 6c6e510, all 7 files read in full). Any
+# typo, widening, weakening, or reordering of a command's allowed-tools value
+# fails CI via check_allowed_tools_golden() — closes the previously-passing
+# gap where a widened grant (e.g. appending ", Write" to review.md) went
+# undetected.
+ALLOWED_TOOLS_GOLDEN = {
+    "review": "Read, Glob, Grep, Bash(git:*), Agent, AskUserQuestion",
+    "adversarial-review": "Read, Glob, Grep, Bash(git:*), Agent, AskUserQuestion",
+    "rescue": "Bash, Agent, AskUserQuestion",
+    "result": "Bash, Read",
+    "setup": "Bash, Read",
+    "status": "Bash",
+    "transfer": "Bash, Read",
+}
+
+# 13: D-11 closed frontmatter key set per file type — intentionally scoped to
+# this plugin's CURRENT, intentional usage, not Claude Code's full documented
+# frontmatter surface (commands may also carry arguments/disallowed-tools/
+# model/effort/context/agent/background/hooks/paths/shell/user-invocable/
+# when_to_use; agents may also carry effort/maxTurns/disallowedTools/skills/
+# memory/background/isolation — none of this plugin's files use any of
+# those). Adopting a legitimate, Anthropic-documented field for this plugin
+# means deliberately extending the set below — that is by design, not a bug.
+COMMAND_ALLOWED_KEYS = {"description", "argument-hint", "allowed-tools", "disable-model-invocation"}
+AGENT_ALLOWED_KEYS = {"name", "description", "model", "tools"}
+SKILL_ALLOWED_KEYS = {"name", "description"}
+
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 # T-09-02 residual: no line may mutate config.toml/auth.json via sed -i, tee,
@@ -188,6 +216,22 @@ def check_disable_model_invocation():
         len(carriers) == 5,
         f"disable-model-invocation must appear in exactly 5 of 7 command files, found {len(carriers)}: {carriers}",
     )
+
+
+def check_allowed_tools_golden():
+    """[D-09] allowed-tools: golden exact-match per command — any typo,
+    widening, weakening, or reordering fails CI."""
+    for name, expected in ALLOWED_TOOLS_GOLDEN.items():
+        fm, err = parse_frontmatter(cmd_path(name))
+        if err:
+            fail(err)
+            continue
+        require(
+            fm.get("allowed-tools") == expected,
+            f"{name}.md: allowed-tools must be exactly {expected!r}, "
+            f"found {fm.get('allowed-tools')!r} (D-09 golden registry — "
+            "intentional changes touch this registry)",
+        )
 
 
 def check_review_readonly_invariant():
@@ -1906,7 +1950,8 @@ def check_sandbox_boundary_docs():
 
 
 def check_agent_skill_frontmatter():
-    """[regression guard] agent frontmatter (name/description/model/tools) and skill frontmatter (name/description) intact."""
+    """[regression guard][D-10] agent frontmatter (name/description/model/tools)
+    and skill frontmatter (name/description) intact; agent tools/model golden-locked."""
     fm, err = parse_frontmatter(AGENT_FILE)
     if err:
         fail(err)
@@ -1914,6 +1959,18 @@ def check_agent_skill_frontmatter():
         for key in ("name", "description", "model", "tools"):
             require(fm.get(key, ""), f"grok-worker.md: agent frontmatter missing or empty '{key}'")
         require(fm.get("name") == "grok-worker", f"grok-worker.md: agent name must be 'grok-worker', found {fm.get('name')!r}")
+        # D-10: golden-lock tools/model VALUES exactly — a model upgrade or a
+        # tool addition must be a deliberate registry change, never silent.
+        require(
+            fm.get("tools") == "Bash, Write",
+            f"grok-worker.md: agent tools must be exactly 'Bash, Write' "
+            f"(D-10 golden lock), found {fm.get('tools')!r}",
+        )
+        require(
+            fm.get("model") == "sonnet",
+            f"grok-worker.md: agent model must be exactly 'sonnet' "
+            f"(D-10 golden lock), found {fm.get('model')!r}",
+        )
     fm, err = parse_frontmatter(SKILL_FILE)
     if err:
         fail(err)
@@ -1921,6 +1978,43 @@ def check_agent_skill_frontmatter():
         for key in ("name", "description"):
             require(fm.get(key, ""), f"SKILL.md: skill frontmatter missing or empty '{key}'")
         require(fm.get("name") == "delegate", f"SKILL.md: skill name must be 'delegate', found {fm.get('name')!r}")
+
+
+def check_closed_key_sets():
+    """[D-11] closed frontmatter key set per file type — any undeclared key
+    fails CI (catches typo'd extra keys Claude Code silently ignores at
+    runtime, e.g. disable-model-invocations with a trailing s)."""
+    for name in ALL_COMMANDS:
+        fm, err = parse_frontmatter(cmd_path(name))
+        if err:
+            fail(err)
+            continue
+        extra = set(fm.keys()) - COMMAND_ALLOWED_KEYS
+        require(
+            not extra,
+            f"{name}.md: undeclared frontmatter key(s) {extra} "
+            "(D-11 closed key set — adopting a new field means touching this registry)",
+        )
+    fm, err = parse_frontmatter(AGENT_FILE)
+    if err:
+        fail(err)
+    else:
+        extra = set(fm.keys()) - AGENT_ALLOWED_KEYS
+        require(
+            not extra,
+            f"grok-worker.md: undeclared frontmatter key(s) {extra} "
+            "(D-11 closed key set — adopting a new field means touching this registry)",
+        )
+    fm, err = parse_frontmatter(SKILL_FILE)
+    if err:
+        fail(err)
+    else:
+        extra = set(fm.keys()) - SKILL_ALLOWED_KEYS
+        require(
+            not extra,
+            f"SKILL.md: undeclared frontmatter key(s) {extra} "
+            "(D-11 closed key set — adopting a new field means touching this registry)",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1931,6 +2025,7 @@ CHECKS = [
     ("CMD-01..04,08..11", check_command_file_set),
     ("CMD-01..04,08..10", check_frontmatter_shape),
     ("CMD-01..04,08..10", check_disable_model_invocation),
+    ("13: D-09/D-10", check_allowed_tools_golden),
     ("CMD-01,CMD-02", check_review_readonly_invariant),
     ("12: review git edges", check_review_git_edge_cases),
     ("CMD-03", check_rescue),
@@ -1943,6 +2038,7 @@ CHECKS = [
     ("CMD-06,CMD-14", check_changelog),
     ("05/06 runtime-free", check_runtime_free),
     ("agent/skill guard", check_agent_skill_frontmatter),
+    ("13: D-11", check_closed_key_sets),
     ("D-01/D-02/D-03", check_prompt_file_write_mechanism),
     ("D-04/D-05/D-06", check_failure_classification_and_status_line),
     ("D-07/D-08", check_cleanup_guarantees),
