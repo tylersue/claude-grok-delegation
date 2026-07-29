@@ -23,3 +23,7 @@ This project is MIT-licensed. Per GitHub's Terms of Service (inbound=outbound), 
 Never include `.planning/` paths in PRs — that directory is maintainer-local planning and is excluded from the repo.
 
 Every PR must pass the `manifest-sanity` and `claude-validate` checks before it can be merged.
+
+## CI: unpinned CLI install
+
+`claude-validate` installs the latest published `@anthropic-ai/claude-code` with no version pin (deliberate, ROADMAP phase 13 decision). If it goes red on an unrelated upstream CLI release rather than this repo's own content, the fix is a deliberate temporary pin in `.github/workflows/validate.yml` (`npm install -g @anthropic-ai/claude-code@<version>`), bumped later when the upstream issue is resolved — never re-adding `continue-on-error`.

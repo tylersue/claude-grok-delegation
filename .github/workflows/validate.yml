@@ -24,6 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Deliberately unpinned (D-02/D-03, ROADMAP phase 13) — always installs
+      # the latest published CLI. If this job reds on an unrelated upstream
+      # release rather than this repo's own content, the remedy is a
+      # deliberate temporary pin (npm install -g @anthropic-ai/claude-code@
+      # <version>) here — not reverting this job to best-effort/advisory
+      # mode. See CONTRIBUTING.md.
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
       - name: Run claude plugin validate
