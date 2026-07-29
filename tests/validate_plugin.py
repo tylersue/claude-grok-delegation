@@ -26,6 +26,9 @@ CHANGELOG = REPO / "CHANGELOG.md"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
 PLUGIN_JSON = REPO / "plugins" / "grok" / ".claude-plugin" / "plugin.json"
 CLAUDE_MD_RULES = REPO / "docs" / "claude-md-rules.md"
+# 13: D-14 — the CI workflow that invokes this very suite. Self-referential
+# by design: a regression to advisory-mode CI must fail locally AND in CI.
+WORKFLOW_FILE = REPO / ".github" / "workflows" / "validate.yml"
 
 ALL_COMMANDS = [
     "review",
@@ -2017,6 +2020,33 @@ def check_closed_key_sets():
         )
 
 
+def check_workflow_hardening():
+    """[D-14] validate.yml: no continue-on-error anywhere, both required job
+    keys present, full-suite step intact — a regression to advisory-mode CI
+    must fail locally and in CI."""
+    text = read(WORKFLOW_FILE)
+    require(
+        "continue-on-error" not in text,
+        "validate.yml: must not contain continue-on-error anywhere — a "
+        "regression to advisory-mode CI must fail locally and in CI (D-14)",
+    )
+    require(
+        re.search(r"^\s*manifest-sanity:\s*$", text, re.MULTILINE) is not None,
+        "validate.yml: missing the 'manifest-sanity' job (required status "
+        "check name) (D-14)",
+    )
+    require(
+        re.search(r"^\s*claude-validate:\s*$", text, re.MULTILINE) is not None,
+        "validate.yml: missing the 'claude-validate' job (required status "
+        "check name) (D-14)",
+    )
+    require(
+        "python3 tests/validate_plugin.py" in text,
+        "validate.yml: the full-suite step (python3 tests/validate_plugin.py) "
+        "must remain intact (D-14)",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -2039,6 +2069,7 @@ CHECKS = [
     ("05/06 runtime-free", check_runtime_free),
     ("agent/skill guard", check_agent_skill_frontmatter),
     ("13: D-11", check_closed_key_sets),
+    ("13: D-14", check_workflow_hardening),
     ("D-01/D-02/D-03", check_prompt_file_write_mechanism),
     ("D-04/D-05/D-06", check_failure_classification_and_status_line),
     ("D-07/D-08", check_cleanup_guarantees),
