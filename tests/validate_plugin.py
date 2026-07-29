@@ -26,7 +26,7 @@ CHANGELOG = REPO / "CHANGELOG.md"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
 PLUGIN_JSON = REPO / "plugins" / "grok" / ".claude-plugin" / "plugin.json"
 CLAUDE_MD_RULES = REPO / "docs" / "claude-md-rules.md"
-# 13: D-14 — the CI workflow that invokes this very suite. Self-referential
+# 13: WF-01 — the CI workflow that invokes this very suite. Self-referential
 # by design: a regression to advisory-mode CI must fail locally AND in CI.
 WORKFLOW_FILE = REPO / ".github" / "workflows" / "validate.yml"
 
@@ -49,7 +49,7 @@ NO_DMI_COMMANDS = ["rescue", "setup"]
 ARG_COMMANDS = ["review", "adversarial-review", "rescue", "status", "result"]
 NO_ARG_COMMANDS = ["setup", "transfer"]
 
-# 13: D-09 golden exact-match allowed-tools per command (ground-truth
+# 13: TOOL-01 golden exact-match allowed-tools per command (ground-truth
 # re-verified directly against HEAD 6c6e510, all 7 files read in full). Any
 # typo, widening, weakening, or reordering of a command's allowed-tools value
 # fails CI via check_allowed_tools_golden() — closes the previously-passing
@@ -65,7 +65,7 @@ ALLOWED_TOOLS_GOLDEN = {
     "transfer": "Bash, Read",
 }
 
-# 13: D-11 closed frontmatter key set per file type — intentionally scoped to
+# 13: KEY-01 closed frontmatter key set per file type — intentionally scoped to
 # this plugin's CURRENT, intentional usage, not Claude Code's full documented
 # frontmatter surface (commands may also carry arguments/disallowed-tools/
 # model/effort/context/agent/background/hooks/paths/shell/user-invocable/
@@ -222,7 +222,7 @@ def check_disable_model_invocation():
 
 
 def check_allowed_tools_golden():
-    """[D-09] allowed-tools: golden exact-match per command — any typo,
+    """[TOOL-01] allowed-tools: golden exact-match per command — any typo,
     widening, weakening, or reordering fails CI."""
     for name, expected in ALLOWED_TOOLS_GOLDEN.items():
         fm, err = parse_frontmatter(cmd_path(name))
@@ -232,7 +232,7 @@ def check_allowed_tools_golden():
         require(
             fm.get("allowed-tools") == expected,
             f"{name}.md: allowed-tools must be exactly {expected!r}, "
-            f"found {fm.get('allowed-tools')!r} (D-09 golden registry — "
+            f"found {fm.get('allowed-tools')!r} (TOOL-01 golden registry — "
             "intentional changes touch this registry)",
         )
 
@@ -1953,7 +1953,7 @@ def check_sandbox_boundary_docs():
 
 
 def check_agent_skill_frontmatter():
-    """[regression guard][D-10] agent frontmatter (name/description/model/tools)
+    """[regression guard][TOOL-02] agent frontmatter (name/description/model/tools)
     and skill frontmatter (name/description) intact; agent tools/model golden-locked."""
     fm, err = parse_frontmatter(AGENT_FILE)
     if err:
@@ -1962,17 +1962,17 @@ def check_agent_skill_frontmatter():
         for key in ("name", "description", "model", "tools"):
             require(fm.get(key, ""), f"grok-worker.md: agent frontmatter missing or empty '{key}'")
         require(fm.get("name") == "grok-worker", f"grok-worker.md: agent name must be 'grok-worker', found {fm.get('name')!r}")
-        # D-10: golden-lock tools/model VALUES exactly — a model upgrade or a
+        # TOOL-02: golden-lock tools/model VALUES exactly — a model upgrade or a
         # tool addition must be a deliberate registry change, never silent.
         require(
             fm.get("tools") == "Bash, Write",
             f"grok-worker.md: agent tools must be exactly 'Bash, Write' "
-            f"(D-10 golden lock), found {fm.get('tools')!r}",
+            f"(TOOL-02 golden lock), found {fm.get('tools')!r}",
         )
         require(
             fm.get("model") == "sonnet",
             f"grok-worker.md: agent model must be exactly 'sonnet' "
-            f"(D-10 golden lock), found {fm.get('model')!r}",
+            f"(TOOL-02 golden lock), found {fm.get('model')!r}",
         )
     fm, err = parse_frontmatter(SKILL_FILE)
     if err:
@@ -1984,7 +1984,7 @@ def check_agent_skill_frontmatter():
 
 
 def check_closed_key_sets():
-    """[D-11] closed frontmatter key set per file type — any undeclared key
+    """[KEY-01] closed frontmatter key set per file type — any undeclared key
     fails CI (catches typo'd extra keys Claude Code silently ignores at
     runtime, e.g. disable-model-invocations with a trailing s)."""
     for name in ALL_COMMANDS:
@@ -1996,7 +1996,7 @@ def check_closed_key_sets():
         require(
             not extra,
             f"{name}.md: undeclared frontmatter key(s) {extra} "
-            "(D-11 closed key set — adopting a new field means touching this registry)",
+            "(KEY-01 closed key set — adopting a new field means touching this registry)",
         )
     fm, err = parse_frontmatter(AGENT_FILE)
     if err:
@@ -2006,7 +2006,7 @@ def check_closed_key_sets():
         require(
             not extra,
             f"grok-worker.md: undeclared frontmatter key(s) {extra} "
-            "(D-11 closed key set — adopting a new field means touching this registry)",
+            "(KEY-01 closed key set — adopting a new field means touching this registry)",
         )
     fm, err = parse_frontmatter(SKILL_FILE)
     if err:
@@ -2016,12 +2016,12 @@ def check_closed_key_sets():
         require(
             not extra,
             f"SKILL.md: undeclared frontmatter key(s) {extra} "
-            "(D-11 closed key set — adopting a new field means touching this registry)",
+            "(KEY-01 closed key set — adopting a new field means touching this registry)",
         )
 
 
 def check_workflow_hardening():
-    """[D-14] validate.yml: no continue-on-error anywhere, both required job
+    """[WF-01] validate.yml: no continue-on-error anywhere, both required job
     keys present, full-suite step intact and region-scoped to the
     manifest-sanity job with no if: guard on that step — a regression to
     advisory-mode CI must fail locally and in CI."""
@@ -2029,19 +2029,19 @@ def check_workflow_hardening():
     require(
         "continue-on-error" not in text,
         "validate.yml: must not contain continue-on-error anywhere — a "
-        "regression to advisory-mode CI must fail locally and in CI (D-14)",
+        "regression to advisory-mode CI must fail locally and in CI (WF-01)",
     )
     ms_start = re.search(r"^\s*manifest-sanity:\s*$", text, re.MULTILINE)
     cv_start = re.search(r"^\s*claude-validate:\s*$", text, re.MULTILINE)
     require(
         ms_start is not None,
         "validate.yml: missing the 'manifest-sanity' job (required status "
-        "check name) (D-14)",
+        "check name) (WF-01)",
     )
     require(
         cv_start is not None,
         "validate.yml: missing the 'claude-validate' job (required status "
-        "check name) (D-14)",
+        "check name) (WF-01)",
     )
     # Region-scoped to the manifest-sanity job body — NOT a whole-file
     # substring check: the rest of this file goes out of its way to
@@ -2056,7 +2056,7 @@ def check_workflow_hardening():
         "python3 tests/validate_plugin.py" in ms_region,
         "validate.yml: the full-suite step (python3 tests/validate_plugin.py) "
         "must run inside the manifest-sanity job — region-scoped, not a "
-        "whole-file check (D-14)",
+        "whole-file check (WF-01)",
     )
     # Further region-scope to the individual step block (bounded by the
     # nearest preceding/following '- name:'/'- uses:' step markers) so a
@@ -2076,7 +2076,7 @@ def check_workflow_hardening():
         re.search(r"^\s*if:", step_block, re.MULTILINE) is None,
         "validate.yml: the full-suite step must not carry an if: guard — "
         "conditionally skipping it is a silent regression to advisory-mode "
-        "CI (D-14)",
+        "CI (WF-01)",
     )
 
 
@@ -2088,7 +2088,7 @@ CHECKS = [
     ("CMD-01..04,08..11", check_command_file_set),
     ("CMD-01..04,08..10", check_frontmatter_shape),
     ("CMD-01..04,08..10", check_disable_model_invocation),
-    ("13: D-09/D-10", check_allowed_tools_golden),
+    ("13: TOOL-01", check_allowed_tools_golden),
     ("CMD-01,CMD-02", check_review_readonly_invariant),
     ("12: review git edges", check_review_git_edge_cases),
     ("CMD-03", check_rescue),
@@ -2101,8 +2101,8 @@ CHECKS = [
     ("CMD-06,CMD-14", check_changelog),
     ("05/06 runtime-free", check_runtime_free),
     ("agent/skill guard", check_agent_skill_frontmatter),
-    ("13: D-11", check_closed_key_sets),
-    ("13: D-14", check_workflow_hardening),
+    ("13: KEY-01", check_closed_key_sets),
+    ("13: WF-01", check_workflow_hardening),
     ("D-01/D-02/D-03", check_prompt_file_write_mechanism),
     ("D-04/D-05/D-06", check_failure_classification_and_status_line),
     ("D-07/D-08", check_cleanup_guarantees),
