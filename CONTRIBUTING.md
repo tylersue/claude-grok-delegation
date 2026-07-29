@@ -21,3 +21,5 @@ This project is MIT-licensed. Per GitHub's Terms of Service (inbound=outbound), 
 ## Housekeeping
 
 Never include `.planning/` paths in PRs — that directory is maintainer-local planning and is excluded from the repo.
+
+Every PR must pass the `manifest-sanity` and `claude-validate` checks before it can be merged.
