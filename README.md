@@ -72,7 +72,7 @@ Claude will also delegate proactively (no slash command needed) when a cross-AI 
 | `/grok:review` | Read-only Grok review of local git state | Supports `--base <ref>`, `--scope auto\|working-tree\|branch`, optional focus text; always read-only |
 | `/grok:adversarial-review` | Same machinery, challenge-the-design framing | Questions architecture and assumptions, not just line-level defects; always read-only |
 | `/grok:rescue` | Delegate investigation, a fix, or follow-up work to Grok | Write-capable by default (see the `--yolo` warning); honors `--read-only`, `--resume`\|`--fresh`, `--model`, `--effort`, `--bg` |
-| `/grok:setup` | Preflight: binary, version, auth state, defaults, rate-limit caveat | Never prints credentials; no review-gate equivalent (no stop hook) |
+| `/grok:setup` | Preflight: binary, version, auth state, defaults, privacy/telemetry posture + opt-out steps, rate-limit caveat | Never prints credentials; no review-gate equivalent (no stop hook) |
 | `/grok:status` | Recent Grok sessions for this repo (`grok sessions list`) | cwd-scoped, includes sibling worktrees; passes `-n`/`--limit` through; backgrounded delegations are tracked by the Claude Code harness itself, not a grok job queue |
 | `/grok:result` | Print a finished session's summary and final output from the on-disk transcript | Defaults to the most recent session; read-only, never resumes, never touches credentials; if the on-disk layout differs, it advises `grok -r <id>` instead |
 | `/grok:transfer` | Guided handoff of this Claude Code session into Grok's `/resume` picker | Preflights the compat flag, `resume-claude` skill, and a cwd-matching session; interactive-only and experimental ("staged" per grok's docs) |
@@ -129,7 +129,7 @@ Delegating a task hands it to the `grok` CLI running under your own Grok account
 - Team-plan accounts can request **Zero Data Retention (ZDR)**
 - Default API retention for the inference channel is **30 days**
 
-A future `/grok:setup` update will surface these settings directly in the preflight check; until then, set the env vars in your shell profile or CI environment.
+`/grok:setup` surfaces these settings in its preflight check — it reports the locally visible telemetry/trace-upload posture (config keys and env-var overrides) and prints this opt-out list. For settings to persist across sessions, set the env vars in your shell profile or CI environment.
 
 **Read/write confinement, separate from the two channels above.** Grok CLI delegation also runs under grok's own kernel-enforced `--sandbox` profiles — this controls what grok's `read_file`/`grep`/`list_dir` tools and any shell child processes can actually touch on disk, independent of what data leaves your machine via the two channels above.
 
